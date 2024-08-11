@@ -22,7 +22,7 @@ class Loan
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $dueDate = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable:true)]
     private ?\DateTimeInterface $returnDate = null;
 
     #[ORM\ManyToOne(inversedBy: 'loans')]
@@ -75,7 +75,7 @@ class Loan
         return $this->returnDate;
     }
 
-    public function setReturnDate(\DateTimeInterface $returnDate): static
+    public function setReturnDate(?\DateTimeInterface $returnDate): static
     {
         $this->returnDate = $returnDate;
 
