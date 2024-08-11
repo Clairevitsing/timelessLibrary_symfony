@@ -45,12 +45,6 @@ class Book
     private ?Category $category = null;
 
     /**
-     * @var Collection<int, Loan>
-     */
-    #[ORM\ManyToMany(targetEntity: Loan::class, mappedBy: 'book')]
-    private Collection $loans;
-
-    /**
      * @var Collection<int, BookLoan>
      */
     #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'book', orphanRemoval: true)]
@@ -59,7 +53,6 @@ class Book
     public function __construct()
     {
         $this->authors = new ArrayCollection();
-        $this->loans = new ArrayCollection();
         $this->bookLoans = new ArrayCollection();
     }
 

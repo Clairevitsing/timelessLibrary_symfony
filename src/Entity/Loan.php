@@ -29,11 +29,6 @@ class Loan
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
 
-    /**
-     * @var Collection<int, Book>
-     */
-    #[ORM\ManyToMany(targetEntity: Book::class, inversedBy: 'loans')]
-    private Collection $book;
 
     /**
      * @var Collection<int, BookLoan>
@@ -43,7 +38,6 @@ class Loan
 
     public function __construct()
     {
-        $this->book = new ArrayCollection();
         $this->bookLoans = new ArrayCollection();
     }
 
