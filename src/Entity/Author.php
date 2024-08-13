@@ -95,7 +95,7 @@ class Author
     /**
      * @return Collection<int, Book>
      */
-    public function getBook(): Collection
+    public function getBooks(): Collection
     {
         return $this->book;
     }
