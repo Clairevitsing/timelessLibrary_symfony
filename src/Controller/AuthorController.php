@@ -235,4 +235,21 @@ class AuthorController extends AbstractController
             ]
         ], Response::HTTP_OK);
     }
+    #[Route('/{id}', name: 'author_delete', methods: ['DELETE'])]
+    public function delete(int $id, Request $request, AuthorRepository $authorRepository, EntityManagerInterface $entityManager): Response
+    {
+        // Retrieve the author to delete using the AuthorRepository
+        $author = $authorRepository->find($id);
+
+        // Check if the animal exists
+        if (!$author) {
+            return new JsonResponse(['message' => 'Author not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        // Use the repository's remove method to delete the animal
+        $authorRepository->remove($author);
+
+        // Return a JSON response indicating success
+        return new JsonResponse(['message' => 'Animal is deleted successfully'], Response::HTTP_OK);
+    }
 }

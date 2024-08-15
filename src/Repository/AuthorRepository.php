@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\Entity\Author;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -11,8 +12,10 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class AuthorRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry)
-    {
+    public function __construct(
+        ManagerRegistry $registry,
+        private EntityManagerInterface $entityManager
+    ){
         parent::__construct($registry, Author::class);
     }
     public function findAll(): array
@@ -117,7 +120,13 @@ class AuthorRepository extends ServiceEntityRepository
 
         return $author;
     }
-
+    public function remove(Author $author): void
+    {
+        // Remove the specified animal from the entity manager
+        $this->entityManager->remove($author);
+        // Commit the changes to the database
+        $this->entityManager->flush();
+    }
 
 
 
