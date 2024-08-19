@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: BookRepository::class)]
 class Book
@@ -14,40 +15,50 @@ class Book
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['book:read', 'author:read',"category:read"])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['book:read', 'author:read',"category:read"])]
     private ?string $title = null;
 
     #[ORM\Column(length: 100)]
+    #[Groups(['book:read', 'author:read',"category:read"])]
     private ?string $ISBN = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE)]
+    #[Groups(['book:read', 'author:read',"category:read"])]
     private ?\DateTimeInterface $publishedYear = null;
 
     #[ORM\Column(type: Types::TEXT)]
+    #[Groups(['book:read', 'author:read',"category:read"])]
     private ?string $description = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['book:read', 'author:read',"category:read"])]
     private ?string $image = null;
 
     #[ORM\Column]
+    #[Groups(['book:read', 'author:read',"category:read"])]
     private ?bool $available = null;
 
     /**
      * @var Collection<int, Author>
      */
-    #[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'book')]
+    #[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'books', orphanRemoval: true)]
+    //#[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'books', cascade: ["remove"])]
+    #[Groups(['book:read', "category:read"])]
     private Collection $authors;
 
-    #[ORM\ManyToOne(inversedBy: 'book')]
+    #[ORM\ManyToOne(targetEntity: Category::class,inversedBy: 'books')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['book:read', 'author:read'])]
     private ?Category $category = null;
 
     /**
      * @var Collection<int, BookLoan>
      */
-    #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'book', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'books', orphanRemoval: true)]
     private Collection $bookLoans;
 
     public function __construct()

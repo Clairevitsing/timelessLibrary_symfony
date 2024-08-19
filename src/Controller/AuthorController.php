@@ -88,7 +88,7 @@ class AuthorController extends AbstractController
 
                 // Use DateTime::createFromFormat to handle year only
                 if (isset($bookData['publishedYear'])) {
-                    $publishedDate = \DateTime::createFromFormat('Y', $bookData['publishedYear']);
+                    $publishedDate = \DateTime::createFromFormat('Y-m-d', $bookData['publishedYear']);
                     if ($publishedDate === false) {
                         return $this->json(['error' => 'Invalid published year format'], Response::HTTP_BAD_REQUEST);
                     }
@@ -236,7 +236,7 @@ class AuthorController extends AbstractController
         ], Response::HTTP_OK);
     }
     #[Route('/{id}', name: 'author_delete', methods: ['DELETE'])]
-    public function delete(int $id, Request $request, AuthorRepository $authorRepository, EntityManagerInterface $entityManager): Response
+    public function delete(int $id, AuthorRepository $authorRepository): Response
     {
         // Retrieve the author to delete using the AuthorRepository
         $author = $authorRepository->find($id);
@@ -250,6 +250,6 @@ class AuthorController extends AbstractController
         $authorRepository->remove($author);
 
         // Return a JSON response indicating success
-        return new JsonResponse(['message' => 'Animal is deleted successfully'], Response::HTTP_OK);
+        return new JsonResponse(['message' => 'Author is deleted successfully'], Response::HTTP_OK);
     }
 }

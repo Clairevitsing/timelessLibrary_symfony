@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: CategoryRepository::class)]
 class Category
@@ -14,23 +15,27 @@ class Category
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['category:read', 'book:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 100)]
+    #[Groups(['category:read', 'book:read'])]
     private ?string $name = null;
 
     #[ORM\Column(type: Types::TEXT)]
+    #[Groups(['category:read', 'book:read'])]
     private ?string $description = null;
 
     /**
      * @var Collection<int, Book>
      */
     #[ORM\OneToMany(targetEntity: Book::class, mappedBy: 'category', orphanRemoval: true)]
-    private Collection $book;
+    #[Groups(['category:read'])]
+    private Collection $books;
 
     public function __construct()
     {
-        $this->book = new ArrayCollection();
+        $this->books = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -65,15 +70,15 @@ class Category
     /**
      * @return Collection<int, Book>
      */
-    public function getBook(): Collection
+    public function getBooks(): Collection
     {
-        return $this->book;
+        return $this->books;
     }
 
     public function addBook(Book $book): static
     {
-        if (!$this->book->contains($book)) {
-            $this->book->add($book);
+        if (!$this->books->contains($book)) {
+            $this->books->add($book);
             $book->setCategory($this);
         }
 
@@ -82,7 +87,7 @@ class Category
 
     public function removeBook(Book $book): static
     {
-        if ($this->book->removeElement($book)) {
+        if ($this->books->removeElement($book)) {
             // set the owning side to null (unless already changed)
             if ($book->getCategory() === $this) {
                 $book->setCategory(null);

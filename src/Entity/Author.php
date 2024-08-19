@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: AuthorRepository::class)]
 class Author
@@ -14,29 +15,35 @@ class Author
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['author:read', 'book:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 100)]
+    #[Groups(['author:read', 'book:read'])]
     private ?string $firstName = null;
 
     #[ORM\Column(length: 100)]
+    #[Groups(['author:read', 'book:read'])]
     private ?string $lastName = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[Groups(['author:read', 'book:read'])]
     private ?\DateTimeInterface $birthDate = null;
 
     #[ORM\Column(type: Types::TEXT)]
+    #[Groups(['author:read', 'book:read'])]
     private ?string $biography = null;
 
     /**
      * @var Collection<int, Book>
      */
-    #[ORM\ManyToMany(targetEntity: Book::class, inversedBy: 'authors')]
-    private Collection $book;
+    #[ORM\ManyToMany(targetEntity: Book::class, inversedBy: 'authors',cascade: ["persist"],fetch:"EAGER", orphanRemoval: truegit),]
+    #[Groups(['author:read'])]
+    private Collection $books;
 
     public function __construct()
     {
-        $this->book = new ArrayCollection();
+        $this->books = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -97,13 +104,14 @@ class Author
      */
     public function getBooks(): Collection
     {
-        return $this->book;
+        return $this->books;
     }
 
     public function addBook(Book $book): static
     {
-        if (!$this->book->contains($book)) {
-            $this->book->add($book);
+        if (!$this->books->contains($book)) {
+            $this->books->add($book);
+            $book->addAuthor($this);
         }
 
         return $this;
@@ -111,7 +119,8 @@ class Author
 
     public function removeBook(Book $book): static
     {
-        $this->book->removeElement($book);
+        $this->books->removeElement($book);
+        $book->removeAuthor($this);
 
         return $this;
     }
