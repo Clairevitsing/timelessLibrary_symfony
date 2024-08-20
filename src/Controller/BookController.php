@@ -212,7 +212,7 @@ class BookController extends AbstractController
 
         // If book not found, return a 404 error
         if (!$book) {
-            return $this->json(['error' => 'Book not found'], Response::HTTP_NOT_FOUND);
+            return new JsonResponse(['error' => 'Book not found'], Response::HTTP_NOT_FOUND);
         }
 
         // Remove the book
