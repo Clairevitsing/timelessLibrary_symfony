@@ -13,7 +13,8 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
+
 
 #[Route('/api/books')]
 class BookController extends AbstractController
@@ -33,7 +34,7 @@ class BookController extends AbstractController
     #[Route('/{id}', name: 'book_read', methods: ['GET'])]
     public function read(int $id): JsonResponse
     {
-        $book = $this->bookRepository->find($id);
+        $book = $this->bookRepository->findOneById($id);
         if (!$book) {
             throw $this->createNotFoundException('Book not found');
         }
@@ -207,27 +208,15 @@ class BookController extends AbstractController
         // Find the book by id
         $book = $bookRepository->find($id);
 
+        //dd($book);
+
         // If book not found, return a 404 error
         if (!$book) {
             return $this->json(['error' => 'Book not found'], Response::HTTP_NOT_FOUND);
         }
 
-        // Handle the relationship with the category
-        $category = $book->getCategory();
-        if ($category) {
-            $category->removeBook($book);
-        }
-
-        // Handle the relationship with authors
-        foreach ($book->getAuthors() as $author) {
-            $author->removeBook($book);
-        }
-
         // Remove the book
-        $this->entityManager->remove($book);
-
-        // Persist changes to the database
-        $this->entityManager->flush();
+        $bookRepository->remove($book);
 
         // Return a success message
         return $this->json(['message' => 'Book deleted successfully']);

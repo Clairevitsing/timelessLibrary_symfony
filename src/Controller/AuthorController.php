@@ -241,6 +241,8 @@ class AuthorController extends AbstractController
         // Retrieve the author to delete using the AuthorRepository
         $author = $authorRepository->find($id);
 
+        //dd($author);
+
         // Check if the animal exists
         if (!$author) {
             return new JsonResponse(['message' => 'Author not found'], Response::HTTP_NOT_FOUND);

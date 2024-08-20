@@ -34,7 +34,7 @@ class BookRepository extends ServiceEntityRepository
 
     public function findOneById(int $id): ?array
     {
-        $book = $this->createQueryBuilder('b')
+        return $this->createQueryBuilder('b')
             //->select('b.id AS book_id', 'b.title', 'b.ISBN', 'b.description', 'b.image', 'b.available')
             //->addSelect('c.id AS category_id', 'c.name AS category_name', 'c.description AS category_description')
             //->addSelect('a.id AS author_id', 'a.firstName', 'a.lastName', 'a.biography')
@@ -46,9 +46,7 @@ class BookRepository extends ServiceEntityRepository
             ->setParameter('id', $id)
             ->getQuery()
             // Use getArrayResult() to handle multiple authors
-            ->getArrayResult();
-
-        return $book;
+            ->getResult();
 //dd($book);
 
     }
