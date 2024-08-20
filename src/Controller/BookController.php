@@ -46,17 +46,17 @@ class BookController extends AbstractController
     {
         $content = $request->getContent();
         if (empty($content)) {
-            return $this->json(['error' => 'No data provided'], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(['error' => 'No data provided'], Response::HTTP_BAD_REQUEST);
         }
 
         $data = json_decode($content, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
 
         // Check that all required fields are present
         if (!isset($data['title'], $data['ISBN'], $data['publishedYear'], $data['description'], $data['image'], $data['available'], $data['category'], $data['authors'])) {
-            return $this->json(['error' => 'Missing required fields'], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(['error' => 'Missing required fields'], Response::HTTP_BAD_REQUEST);
         }
 
         $book = new Book();
@@ -105,7 +105,7 @@ class BookController extends AbstractController
         $this->entityManager->persist($book);
         $this->entityManager->flush();
 
-        return $this->json([
+        return new JsonResponse([
             'message' => 'Book created successfully',
             'id' => $book->getId()
         ], Response::HTTP_CREATED);
@@ -121,13 +121,13 @@ class BookController extends AbstractController
 
         $data = json_decode($content, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
 
         // Fetch the Book entity by ID
         $book = $this->entityManager->getRepository(Book::class)->find($id);
         if (!$book) {
-            return $this->json(['error' => 'Book not found'], Response::HTTP_NOT_FOUND);
+            return new JsonResponse(['error' => 'Book not found'], Response::HTTP_NOT_FOUND);
         }
 
         // Update the Book details
@@ -196,14 +196,14 @@ class BookController extends AbstractController
         $this->entityManager->persist($book);
         $this->entityManager->flush();
 
-        return $this->json([
+        return new JsonResponse([
             'message' => 'Book updated successfully',
             'id' => $book->getId()
         ], Response::HTTP_OK);
     }
 
     #[Route('/{id}', name: 'book_delete', methods: ['DELETE'])]
-    public function delete(int $id, BookRepository $bookRepository): JsonResponse
+    public function delete(int $id, BookRepository $bookRepository,EntityManagerInterface $entityManager): JsonResponse
     {
         // Find the book by id
         $book = $bookRepository->find($id);
@@ -216,10 +216,12 @@ class BookController extends AbstractController
         }
 
         // Remove the book
-        $bookRepository->remove($book);
+        $entityManager->remove($book);
+
+        $entityManager->flush();
 
         // Return a success message
-        return $this->json(['message' => 'Book deleted successfully']);
+        return new JsonResponse(['message' => 'Book deleted successfully'] , Response::HTTP_OK);
     }
 }
 

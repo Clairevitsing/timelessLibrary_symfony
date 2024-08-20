@@ -25,14 +25,14 @@ class AuthorController extends AbstractController
     public function index(AuthorRepository $authorRepository): JsonResponse
     {
         $authors = $authorRepository->findAll();
-        //dd($authors);
+        ($authors);
         return $this->json($authors, context: ['groups' => 'author:read']);
     }
 
     #[Route('/{id}', name: 'author_read', methods: ['GET'])]
     public function read(int $id, AuthorRepository $authorRepository): JsonResponse
     {
-        $author = $authorRepository->findOneById($id);
+        $author = $authorRepository->find($id);
         if (!$author) {
             throw $this->createNotFoundException('Author not found');
         }
@@ -45,12 +45,12 @@ class AuthorController extends AbstractController
     {
         $content = $request->getContent();
         if (empty($content)) {
-            return $this->json(['error' => 'No data provided'], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(['error' => 'No data provided'], Response::HTTP_BAD_REQUEST);
         }
 
         $data = json_decode($content, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
 
         // Check that all required fields are present
@@ -75,7 +75,7 @@ class AuthorController extends AbstractController
 
         foreach ($data['books'] as $bookData) {
             if (!isset($bookData['title'], $bookData['category'])) {
-                return $this->json(['error' => 'Book title and category are required'], Response::HTTP_BAD_REQUEST);
+                return new JsonResponse(['error' => 'Book title and category are required'], Response::HTTP_BAD_REQUEST);
             }
 
             // Check if the book already exists
@@ -130,7 +130,7 @@ class AuthorController extends AbstractController
         $this->entityManager->persist($author);
         $this->entityManager->flush();
 
-        return $this->json([
+        return new JsonResponse([
             'message' => 'Author created successfully',
             'id' => $author->getId()
         ], Response::HTTP_CREATED);
@@ -140,6 +140,7 @@ class AuthorController extends AbstractController
     {
         // Retrieve the author to edit using the AuthorRepository
         $author = $authorRepository->find($id);
+        //dd($author);
 
         // Check if the author exists
         if (!$author) {
@@ -214,7 +215,7 @@ class AuthorController extends AbstractController
         $entityManager->flush();
 
         // Return a JSON response indicating success
-        return $this->json([
+        return new JsonResponse([
             'message' => 'Author updated successfully',
             'author' => [
                 'id' => $author->getId(),
@@ -236,7 +237,7 @@ class AuthorController extends AbstractController
         ], Response::HTTP_OK);
     }
     #[Route('/{id}', name: 'author_delete', methods: ['DELETE'])]
-    public function delete(int $id, AuthorRepository $authorRepository): Response
+    public function delete(int $id, AuthorRepository $authorRepository,EntityManagerInterface $entityManager): Response
     {
         // Retrieve the author to delete using the AuthorRepository
         $author = $authorRepository->find($id);
@@ -249,7 +250,11 @@ class AuthorController extends AbstractController
         }
 
         // Use the repository's remove method to delete the animal
-        $authorRepository->remove($author);
+        //$authorRepository->remove($author);
+        // Remove the specified author from the entity manager
+        $entityManager->remove($author);
+        // Commit the changes to the database
+        $entityManager->flush();
 
         // Return a JSON response indicating success
         return new JsonResponse(['message' => 'Author is deleted successfully'], Response::HTTP_OK);
