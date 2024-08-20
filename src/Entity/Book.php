@@ -45,7 +45,7 @@ class Book
     /**
      * @var Collection<int, Author>
      */
-    #[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'books', orphanRemoval: true)]
+    #[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'books',cascade: ["persist"], orphanRemoval: true)]
     //#[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'books', cascade: ["remove"])]
     #[Groups(['book:read', "category:read"])]
     private Collection $authors;
