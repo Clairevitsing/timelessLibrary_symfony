@@ -30,7 +30,7 @@ class Loan
     #[Groups(['loan:read', 'user:read'])]
     private ?\DateTimeInterface $returnDate = null;
 
-    #[ORM\ManyToOne(inversedBy: 'loans')]
+    #[ORM\ManyToOne(targetEntity: User::class,inversedBy: 'loans', cascade:['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['loan:read'])]
     private ?User $user = null;
@@ -104,15 +104,15 @@ class Loan
     /**
      * @return Collection<int, Book>
      */
-    public function getBook(): Collection
+    public function getBooks(): Collection
     {
-        return $this->book;
+        return $this->books;
     }
 
     public function addBook(Book $book): static
     {
-        if (!$this->book->contains($book)) {
-            $this->book->add($book);
+        if (!$this->books->contains($book)) {
+            $this->books->add($book);
         }
 
         return $this;
@@ -120,7 +120,7 @@ class Loan
 
     public function removeBook(Book $book): static
     {
-        $this->book->removeElement($book);
+        $this->books->removeElement($book);
 
         return $this;
     }

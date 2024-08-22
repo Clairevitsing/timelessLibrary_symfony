@@ -49,4 +49,5 @@ class BookLoan
 
         return $this;
     }
+
 }

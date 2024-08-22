@@ -59,6 +59,7 @@ class Book
      * @var Collection<int, BookLoan>
      */
     #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'books', orphanRemoval: true)]
+    #[Groups(['book:read'])]
     private Collection $bookLoans;
 
     public function __construct()

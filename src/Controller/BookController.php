@@ -203,17 +203,17 @@ class BookController extends AbstractController
     }
 
     #[Route('/{id}', name: 'book_delete', methods: ['DELETE'])]
-    public function delete(int $id, BookRepository $bookRepository,EntityManagerInterface $entityManager): JsonResponse
+    public function delete(int $id, Book $book, BookRepository $bookRepository,EntityManagerInterface $entityManager): JsonResponse
     {
         // Find the book by id
-        $book = $bookRepository->find($id);
+        //$book = $bookRepository->find($id);
 
-        dd($book);
+        //dd($book);
 
         // If book not found, return a 404 error
-        if (!$book) {
-            return new JsonResponse(['error' => 'Book not found'], Response::HTTP_NOT_FOUND);
-        }
+        //if (!$book) {
+         //   return new JsonResponse(['error' => 'Book not found'], Response::HTTP_NOT_FOUND);
+      // }
 
         // Remove the book
         $entityManager->remove($book);
