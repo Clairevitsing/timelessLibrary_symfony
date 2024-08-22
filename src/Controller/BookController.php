@@ -7,6 +7,7 @@ use App\Entity\Book;
 use App\Entity\Category;
 use App\Repository\AuthorRepository;
 use App\Repository\BookRepository;
+use App\Repository\CategoryRepository;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -42,7 +43,11 @@ class BookController extends AbstractController
     }
 
     #[Route('/new', name: 'book_create', methods: ['POST'])]
-    public function create(Request $request): JsonResponse
+    public function create(
+        Request $request,
+        AuthorRepository $authorRepository,
+        CategoryRepository $categoryRepository
+    ): JsonResponse
     {
         $content = $request->getContent();
         if (empty($content)) {
@@ -72,7 +77,6 @@ class BookController extends AbstractController
         $book->setAvailable($data['available']);
 
         // Handle category
-        $categoryRepository = $this->entityManager->getRepository(Category::class);
         $category = $categoryRepository->findOneBy(['name' => $data['category']['name']]);
         if (!$category) {
             $category = new Category();
@@ -83,7 +87,6 @@ class BookController extends AbstractController
         $book->setCategory($category);
 
         // Handle authors
-        $authorRepository = $this->entityManager->getRepository(Author::class);
         foreach ($data['authors'] as $authorData) {
             $author = $authorRepository->findOneBy(['firstName' => $authorData['firstName'], 'lastName' => $authorData['lastName']]);
             if (!$author) {
@@ -112,7 +115,13 @@ class BookController extends AbstractController
     }
 
     #[Route('/{id}', name: 'book_edit', methods: ['PUT'])]
-    public function edit(int $id, Request $request): JsonResponse
+    public function edit(
+        int $id,
+        Request $request,
+        BookRepository $bookRepository,
+        CategoryRepository $categoryRepository,
+        AuthorRepository $authorRepository
+    ): JsonResponse
     {
         $content = $request->getContent();
         if (empty($content)) {
@@ -125,7 +134,7 @@ class BookController extends AbstractController
         }
 
         // Fetch the Book entity by ID
-        $book = $this->entityManager->getRepository(Book::class)->find($id);
+        $book = $bookRepository->find($id);
         if (!$book) {
             return new JsonResponse(['error' => 'Book not found'], Response::HTTP_NOT_FOUND);
         }
@@ -141,7 +150,7 @@ class BookController extends AbstractController
         // Handle Category
         if (isset($data['category'])) {
             $categoryName = $data['category']['name'];
-            $category = $this->entityManager->getRepository(Category::class)->findOneBy(['name' => $categoryName]);
+            $category = $categoryRepository->findOneBy(['name' => $categoryName]);
 
             if (!$category) {
                 // Create a new Category if it doesn't exist
@@ -164,7 +173,7 @@ class BookController extends AbstractController
             }
 
             foreach ($data['authors'] as $authorData) {
-                $author = $this->entityManager->getRepository(Author::class)->findOneBy([
+                $author = $authorRepository->findOneBy([
                     'firstName' => $authorData['firstName'],
                     'lastName' => $authorData['lastName']
                 ]);

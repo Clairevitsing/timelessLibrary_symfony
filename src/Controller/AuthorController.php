@@ -6,6 +6,8 @@ use App\Entity\Author;
 use App\Entity\Book;
 use App\Entity\Category;
 use App\Repository\AuthorRepository;
+use App\Repository\BookRepository;
+use App\Repository\CategoryRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -41,7 +43,11 @@ class AuthorController extends AbstractController
     }
 
     #[Route('/new', name: 'author_create', methods: ['POST'])]
-    public function create(Request $request): JsonResponse
+    public function create(
+        Request $request,
+        CategoryRepository $categoryRepository,
+        BookRepository $bookRepository
+    ): JsonResponse
     {
         $content = $request->getContent();
         if (empty($content)) {
@@ -65,7 +71,7 @@ class AuthorController extends AbstractController
         $author->setBirthDate(new \DateTime($data['birthDate']));
 
         // Preload all categories
-        $categoryRepository = $this->entityManager->getRepository(Category::class);
+        //$categoryRepository = $this->entityManager->getRepository(Category::class);
         $categories = $categoryRepository->findAll();
         $categoryMap = [];
         foreach ($categories as $category) {
@@ -79,7 +85,7 @@ class AuthorController extends AbstractController
             }
 
             // Check if the book already exists
-            $book = $this->entityManager->getRepository(Book::class)->findOneBy(['title' => $bookData['title']]);
+            $book = $bookRepository->findOneBy(['title' => $bookData['title']]);
 
             if (!$book) {
                 $book = new Book();
@@ -136,7 +142,13 @@ class AuthorController extends AbstractController
         ], Response::HTTP_CREATED);
     }
     #[Route('/{id}', name: 'author_edit', methods: ['PUT'])]
-    public function edit(int $id, Request $request, AuthorRepository $authorRepository, EntityManagerInterface $entityManager): JsonResponse
+    public function edit(
+        int $id, Request $request,
+        AuthorRepository $authorRepository,
+        BookRepository $bookRepository,
+        CategoryRepository $categoryRepository,
+        EntityManagerInterface $entityManager
+    ): JsonResponse
     {
         // Retrieve the author to edit using the AuthorRepository
         $author = $authorRepository->find($id);
@@ -163,8 +175,8 @@ class AuthorController extends AbstractController
 
         // Handle books
         if (isset($data['books'])) {
-            $bookRepository = $entityManager->getRepository(Book::class);
-            $categoryRepository = $entityManager->getRepository(Category::class);
+            //$bookRepository = $entityManager->getRepository(Book::class);
+            //$categoryRepository = $entityManager->getRepository(Category::class);
             $existingBooks = $author->getBooks()->toArray();
 
             foreach ($data['books'] as $bookData) {

@@ -68,7 +68,6 @@ class UserController extends AbstractController
     public function create(
         Request $request,
         UserRepository $userRepository,
-        LoanRepository $loanRepository,
         EntityManagerInterface $entityManager,
         UserPasswordHasherInterface $passwordHasher
     ): JsonResponse

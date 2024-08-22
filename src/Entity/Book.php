@@ -45,12 +45,12 @@ class Book
     /**
      * @var Collection<int, Author>
      */
-    #[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'books',cascade: ["persist"], orphanRemoval: true)]
+    #[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'books',cascade: ['persist','remove'], orphanRemoval: true)]
     //#[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'books', cascade: ["remove"])]
     #[Groups(['book:read', "category:read"])]
     private Collection $authors;
 
-    #[ORM\ManyToOne(targetEntity: Category::class,inversedBy: 'books')]
+    #[ORM\ManyToOne(targetEntity: Category::class,inversedBy: 'books',cascade: ['persist','remove'])]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['book:read', 'author:read'])]
     private ?Category $category = null;
@@ -58,7 +58,7 @@ class Book
     /**
      * @var Collection<int, BookLoan>
      */
-    #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'books', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'books', cascade: ['persist','remove'],orphanRemoval: true)]
     #[Groups(['book:read'])]
     private Collection $bookLoans;
 
