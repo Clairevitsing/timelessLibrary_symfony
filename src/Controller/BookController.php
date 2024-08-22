@@ -24,7 +24,7 @@ class BookController extends AbstractController
         private EntityManagerInterface $entityManager
     ) {}
 
-    #[Route('/', name: 'app_book')]
+    #[Route('/', name: 'book_index', methods: ['GET'])]
     public function index(): JsonResponse
     {
         $books = $this->bookRepository->findAll();
@@ -34,7 +34,7 @@ class BookController extends AbstractController
     #[Route('/{id}', name: 'book_read', methods: ['GET'])]
     public function read(int $id): JsonResponse
     {
-        $book = $this->bookRepository->findOneById($id);
+        $book = $this->bookRepository->find($id);
         if (!$book) {
             throw $this->createNotFoundException('Book not found');
         }
@@ -208,7 +208,7 @@ class BookController extends AbstractController
         // Find the book by id
         $book = $bookRepository->find($id);
 
-        //dd($book);
+        dd($book);
 
         // If book not found, return a 404 error
         if (!$book) {

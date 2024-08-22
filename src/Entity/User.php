@@ -9,6 +9,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
@@ -18,15 +19,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['user:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 180)]
+    #[Groups(['user:read'])]
     private ?string $email = null;
 
     /**
      * @var list<string> The user roles
      */
     #[ORM\Column]
+    #[Groups(['user:read'])]
     private array $roles = [];
 
     /**
@@ -36,27 +40,34 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $password = null;
 
     #[ORM\Column(length: 100)]
+    #[Groups(['user:read'])]
     private ?string $firstName = null;
 
     #[ORM\Column(length: 100)]
+    #[Groups(['user:read'])]
     private ?string $lastName = null;
 
     #[ORM\Column(length: 100)]
+    #[Groups(['user:read'])]
     private ?string $userName = null;
 
     #[ORM\Column(length: 50)]
+    #[Groups(['user:read'])]
     private ?string $phoneNumber = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[Groups(['user:read'])]
     private ?\DateTimeInterface $subStartDate = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[Groups(['user:read'])]
     private ?\DateTimeInterface $subEndDate = null;
 
     /**
      * @var Collection<int, Loan>
      */
     #[ORM\OneToMany(targetEntity: Loan::class, mappedBy: 'user', orphanRemoval: true)]
+    #[Groups(['user:read'])]
     private Collection $loans;
 
     public function __construct()

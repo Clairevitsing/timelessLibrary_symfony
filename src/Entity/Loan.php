@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: LoanRepository::class)]
 class Loan
@@ -14,19 +15,24 @@ class Loan
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['loan:read', 'user:read'])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[Groups(['loan:read', 'user:read'])]
     private ?\DateTimeInterface $loanDate = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[Groups(['loan:read', 'user:read'])]
     private ?\DateTimeInterface $dueDate = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable:true)]
+    #[Groups(['loan:read', 'user:read'])]
     private ?\DateTimeInterface $returnDate = null;
 
     #[ORM\ManyToOne(inversedBy: 'loans')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['loan:read'])]
     private ?User $user = null;
 
 
@@ -34,6 +40,7 @@ class Loan
      * @var Collection<int, BookLoan>
      */
     #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'loan', orphanRemoval: true)]
+    #[Groups(['loan:read'])]
     private Collection $bookLoans;
 
     public function __construct()

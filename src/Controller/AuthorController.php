@@ -25,7 +25,7 @@ class AuthorController extends AbstractController
     public function index(AuthorRepository $authorRepository): JsonResponse
     {
         $authors = $authorRepository->findAll();
-        ($authors);
+        //dd($authors);
         return $this->json($authors, context: ['groups' => 'author:read']);
     }
 
