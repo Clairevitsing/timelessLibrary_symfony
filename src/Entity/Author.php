@@ -15,29 +15,29 @@ class Author
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['author:read', 'book:read'])]
+    #[Groups(['author:read', 'book:read','category:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 100)]
-    #[Groups(['author:read', 'book:read'])]
+    #[Groups(['author:read', 'book:read','category:read'])]
     private ?string $firstName = null;
 
     #[ORM\Column(length: 100)]
-    #[Groups(['author:read', 'book:read'])]
+    #[Groups(['author:read', 'book:read','category:read'])]
     private ?string $lastName = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
-    #[Groups(['author:read', 'book:read'])]
+    #[Groups(['author:read', 'book:read','category:read'])]
     private ?\DateTimeInterface $birthDate = null;
 
     #[ORM\Column(type: Types::TEXT)]
-    #[Groups(['author:read', 'book:read'])]
+    #[Groups(['author:read', 'book:read','category:read'])]
     private ?string $biography = null;
 
     /**
      * @var Collection<int, Book>
      */
-    #[ORM\ManyToMany(targetEntity: Book::class, inversedBy:'authors', cascade: ["persist"], orphanRemoval: true)]
+    #[ORM\ManyToMany(targetEntity: Book::class, inversedBy:'authors', cascade: ['persist','remove'], orphanRemoval: true)]
     #[Groups(['author:read'])]
     private Collection $books;
 

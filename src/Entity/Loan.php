@@ -15,31 +15,31 @@ class Loan
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['loan:read', 'user:read'])]
+    #[Groups(['loan:read', 'user:read','bookLoan:read'])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
-    #[Groups(['loan:read', 'user:read'])]
+    #[Groups(['loan:read', 'user:read','bookLoan:read'])]
     private ?\DateTimeInterface $loanDate = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
-    #[Groups(['loan:read', 'user:read'])]
+    #[Groups(['loan:read', 'user:read','bookLoan:read'])]
     private ?\DateTimeInterface $dueDate = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable:true)]
-    #[Groups(['loan:read', 'user:read'])]
+    #[Groups(['loan:read', 'user:read','bookLoan:read'])]
     private ?\DateTimeInterface $returnDate = null;
 
     #[ORM\ManyToOne(targetEntity: User::class,inversedBy: 'loans', cascade:['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['loan:read'])]
+    #[Groups(['loan:read','bookLoan:read'])]
     private ?User $user = null;
 
 
     /**
      * @var Collection<int, BookLoan>
      */
-    #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'loan', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'loan', cascade:['persist', 'remove'],orphanRemoval: true)]
     #[Groups(['loan:read'])]
     private Collection $bookLoans;
 

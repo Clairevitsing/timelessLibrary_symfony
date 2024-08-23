@@ -15,15 +15,15 @@ class Category
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['category:read', 'book:read'])]
+    #[Groups(['category:read', 'book:read','author:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 100)]
-    #[Groups(['category:read', 'book:read'])]
+    #[Groups(['category:read', 'book:read','author:read'])]
     private ?string $name = null;
 
     #[ORM\Column(type: Types::TEXT)]
-    #[Groups(['category:read', 'book:read'])]
+    #[Groups(['category:read', 'book:read','author:read'])]
     private ?string $description = null;
 
     /**

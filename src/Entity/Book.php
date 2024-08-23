@@ -15,31 +15,31 @@ class Book
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['book:read', 'author:read',"category:read"])]
+    #[Groups(['book:read','author:read','category:read','bookLoan:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['book:read', 'author:read',"category:read"])]
+    #[Groups(['book:read', 'author:read','category:read','bookLoan:read'])]
     private ?string $title = null;
 
     #[ORM\Column(length: 100)]
-    #[Groups(['book:read', 'author:read',"category:read"])]
+    #[Groups(['book:read', 'author:read','category:read','bookLoan:read'])]
     private ?string $ISBN = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE)]
-    #[Groups(['book:read', 'author:read',"category:read"])]
+    #[Groups(['book:read', 'author:read','category:read','bookLoan:read'])]
     private ?\DateTimeInterface $publishedYear = null;
 
     #[ORM\Column(type: Types::TEXT)]
-    #[Groups(['book:read', 'author:read',"category:read"])]
+    #[Groups(['book:read', 'author:read','category:read','bookLoan:read'])]
     private ?string $description = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['book:read', 'author:read',"category:read"])]
+    #[Groups(['book:read', 'author:read','category:read','bookLoan:read'])]
     private ?string $image = null;
 
     #[ORM\Column]
-    #[Groups(['book:read', 'author:read',"category:read"])]
+    #[Groups(['book:read', 'author:read','category:read','bookLoan:read'])]
     private ?bool $available = null;
 
     /**
@@ -47,19 +47,18 @@ class Book
      */
     #[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'books',cascade: ['persist','remove'], orphanRemoval: true)]
     //#[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'books', cascade: ["remove"])]
-    #[Groups(['book:read', "category:read"])]
+    #[Groups(['book:read','category:read','bookLoan:read'])]
     private Collection $authors;
 
-    #[ORM\ManyToOne(targetEntity: Category::class,inversedBy: 'books',cascade: ['persist','remove'])]
+    #[ORM\ManyToOne(targetEntity: Category::class, inversedBy: 'books',cascade: ['persist','remove'])]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['book:read', 'author:read'])]
+    #[Groups(['book:read', 'author:read','bookLoan:read'])]
     private ?Category $category = null;
 
     /**
      * @var Collection<int, BookLoan>
      */
-    #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'books', cascade: ['persist','remove'],orphanRemoval: true)]
-    #[Groups(['book:read'])]
+    #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'books',orphanRemoval: true)]
     private Collection $bookLoans;
 
     public function __construct()
