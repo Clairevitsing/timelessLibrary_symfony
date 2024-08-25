@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Attribute\MaxDepth;
 
 #[ORM\Entity(repositoryClass: LoanRepository::class)]
 class Loan
@@ -33,6 +34,7 @@ class Loan
     #[ORM\ManyToOne(targetEntity: User::class,inversedBy: 'loans', cascade:['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['loan:read','bookLoan:read'])]
+    #[MaxDepth(1)]
     private ?User $user = null;
 
 
@@ -41,6 +43,7 @@ class Loan
      */
     #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'loan', cascade:['persist', 'remove'],orphanRemoval: true)]
     #[Groups(['loan:read'])]
+    #[MaxDepth(1)]
     private Collection $bookLoans;
 
     public function __construct()
@@ -85,6 +88,9 @@ class Loan
     public function setReturnDate(?\DateTimeInterface $returnDate): static
     {
         $this->returnDate = $returnDate;
+        foreach ($this->bookLoans as $bookLoan) {
+            $bookLoan->getBook()->updateAvailability();
+        }
 
         return $this;
     }
@@ -136,8 +142,10 @@ class Loan
     public function addBookLoan(BookLoan $bookLoan): static
     {
         if (!$this->bookLoans->contains($bookLoan)) {
-            $this->bookLoans->add($bookLoan);
+            $this->bookLoans[] = $bookLoan;
+            //$this->bookLoans->add($bookLoan);
             $bookLoan->setLoan($this);
+            $bookLoan->getBook()->updateAvailability();
         }
 
         return $this;
@@ -150,6 +158,8 @@ class Loan
             if ($bookLoan->getLoan() === $this) {
                 $bookLoan->setLoan(null);
             }
+
+            $bookLoan->getBook()->updateAvailability();
         }
 
         return $this;

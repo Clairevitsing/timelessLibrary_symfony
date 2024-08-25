@@ -2,12 +2,8 @@
 
 namespace App\Controller;
 
-use App\Entity\Author;
-use App\Entity\Book;
 use App\Entity\Category;
-use App\Repository\AuthorRepository;
 use App\Repository\CategoryRepository;
-use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;

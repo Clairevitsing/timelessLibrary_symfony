@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\MaxDepth;
 
 #[ORM\Entity(repositoryClass: BookRepository::class)]
 class Book
@@ -15,32 +16,32 @@ class Book
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['book:read','author:read','category:read','bookLoan:read'])]
+    #[Groups(['book:read','author:read','category:read','bookLoan:read','loan:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['book:read', 'author:read','category:read','bookLoan:read'])]
+    #[Groups(['book:read', 'author:read','category:read','bookLoan:read','loan:read'])]
     private ?string $title = null;
 
     #[ORM\Column(length: 100)]
-    #[Groups(['book:read', 'author:read','category:read','bookLoan:read'])]
+    #[Groups(['book:read', 'author:read','category:read','bookLoan:read','loan:read'])]
     private ?string $ISBN = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE)]
-    #[Groups(['book:read', 'author:read','category:read','bookLoan:read'])]
+    #[Groups(['book:read', 'author:read','category:read','bookLoan:read','loan:read'])]
     private ?\DateTimeInterface $publishedYear = null;
 
     #[ORM\Column(type: Types::TEXT)]
-    #[Groups(['book:read', 'author:read','category:read','bookLoan:read'])]
+    #[Groups(['book:read', 'author:read','category:read','bookLoan:read','loan:read'])]
     private ?string $description = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['book:read', 'author:read','category:read','bookLoan:read'])]
+    #[Groups(['book:read', 'author:read','category:read','bookLoan:read','loan:read'])]
     private ?string $image = null;
 
     #[ORM\Column]
-    #[Groups(['book:read', 'author:read','category:read','bookLoan:read'])]
-    private ?bool $available = null;
+    #[Groups(['book:read', 'author:read','category:read','bookLoan:read','loan:read'])]
+    private ?bool $available = false;
 
     /**
      * @var Collection<int, Author>
@@ -48,6 +49,7 @@ class Book
     #[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'books',cascade: ['persist','remove'], orphanRemoval: true)]
     //#[ORM\ManyToMany(targetEntity: Author::class, mappedBy: 'books', cascade: ["remove"])]
     #[Groups(['book:read','category:read','bookLoan:read'])]
+    #[MaxDepth(1)]
     private Collection $authors;
 
     #[ORM\ManyToOne(targetEntity: Category::class, inversedBy: 'books',cascade: ['persist','remove'])]
@@ -132,11 +134,12 @@ class Book
         return $this;
     }
 
-    public function isAvailable(): ?bool
+    public function isAvailable(): bool
     {
         return $this->available;
     }
 
+    //Sets the availability status of the book.
     public function setAvailable(bool $available): static
     {
         $this->available = $available;
@@ -144,9 +147,24 @@ class Book
         return $this;
     }
 
-    /**
-     * @return Collection<int, Author>
-     */
+    public function updateAvailability(): void
+    {
+        $this->available = $this->calculateAvailability();
+    }
+
+    //Calculates whether the book is available based on the current loans.
+    //If there is an active loan (i.e., a loan with no return date), the book is considered unavailable.
+    private function calculateAvailability(): bool
+    {
+        foreach ($this->bookLoans as $bookLoan) {
+            $loan = $bookLoan->getLoan();
+            if ($loan && $loan->getReturnDate() === null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public function getAuthors(): Collection
     {
         return $this->authors;
@@ -179,33 +197,6 @@ class Book
     public function setCategory(?Category $category): static
     {
         $this->category = $category;
-
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, Loan>
-     */
-    public function getLoans(): Collection
-    {
-        return $this->loans;
-    }
-
-    public function addLoan(Loan $loan): static
-    {
-        if (!$this->loans->contains($loan)) {
-            $this->loans->add($loan);
-            $loan->addBook($this);
-        }
-
-        return $this;
-    }
-
-    public function removeLoan(Loan $loan): static
-    {
-        if ($this->loans->removeElement($loan)) {
-            $loan->removeBook($this);
-        }
 
         return $this;
     }

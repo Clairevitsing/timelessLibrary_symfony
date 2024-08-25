@@ -12,17 +12,17 @@ class BookLoan
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['bookLoan:read','book:read','loan:read' ])]
+    #[Groups(['bookLoan:read','book:read'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'bookLoans')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['bookLoan:read','loan:read' ])]
+    #[Groups(['bookLoan:read' ,"loan:read"])]
     private ?Book $book = null;
 
     #[ORM\ManyToOne(inversedBy: 'bookLoans')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['bookLoan:read','book:read','loan:read' ])]
+    #[Groups(['bookLoan:read','book:read'])]
     private ?Loan $loan = null;
 
     public function getId(): ?int
