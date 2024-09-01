@@ -154,6 +154,8 @@ class UserController extends AbstractController
         $user->setUserName($data['userName'] ?? $user->getUserName());
         $user->setPhoneNumber($data['phoneNumber'] ?? $user->getPhoneNumber());
 
+
+
         // For password
         if (isset($data['password'])) {
             $user->setPassword($passwordHasher->hashPassword($user, $data['password']));

@@ -39,6 +39,9 @@ class Author
      */
     #[ORM\ManyToMany(targetEntity: Book::class, inversedBy:'authors', cascade: ['persist','remove'], orphanRemoval: true)]
     #[Groups(['author:read'])]
+    #[ORM\JoinTable(name: 'Author_Book')]
+    #[ORM\JoinColumn(name: 'author_id', referencedColumnName: 'id')]
+    #[ORM\InverseJoinColumn(name: 'book_id', referencedColumnName: 'id')]
     private Collection $books;
 
     public function __construct()

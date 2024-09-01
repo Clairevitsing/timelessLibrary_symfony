@@ -19,8 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
 class AuthorController extends AbstractController
 {
     public function __construct(
-        private AuthorRepository $authorRepository,
-        private EntityManagerInterface $entityManager
+        private AuthorRepository $authorRepository
     ){
     }
     #[Route('/', name: 'author_index', methods: ['GET'])]
@@ -45,10 +44,10 @@ class AuthorController extends AbstractController
     #[Route('/new', name: 'author_create', methods: ['POST'])]
     public function create(
         Request $request,
-        CategoryRepository $categoryRepository,
+        EntityManagerInterface $entityManager,
         BookRepository $bookRepository
-    ): JsonResponse
-    {
+    ): JsonResponse {
+
         $content = $request->getContent();
         if (empty($content)) {
             return new JsonResponse(['error' => 'No data provided'], Response::HTTP_BAD_REQUEST);
@@ -60,7 +59,7 @@ class AuthorController extends AbstractController
         }
 
         // Check that all required fields are present
-        if (!isset($data['firstName'], $data['lastName'], $data['biography'], $data['birthDate'], $data['books'])) {
+        if (!isset($data['firstName'], $data['lastName'], $data['biography'], $data['birthDate'], $data['bookIds'])) {
             return $this->json(['error' => 'Missing required fields'], Response::HTTP_BAD_REQUEST);
         }
 
@@ -70,102 +69,47 @@ class AuthorController extends AbstractController
         $author->setBiography($data['biography']);
         $author->setBirthDate(new \DateTime($data['birthDate']));
 
-        // Preload all categories
-        //$categoryRepository = $this->entityManager->getRepository(Category::class);
-        $categories = $categoryRepository->findAll();
-        $categoryMap = [];
-        foreach ($categories as $category) {
-            // Map category names to category objects
-            $categoryMap[$category->getName()] = $category;
-        }
-
-        foreach ($data['books'] as $bookData) {
-            if (!isset($bookData['title'], $bookData['category'])) {
-                return new JsonResponse(['error' => 'Book title and category are required'], Response::HTTP_BAD_REQUEST);
-            }
-
-            // Check if the book already exists
-            $book = $bookRepository->findOneBy(['title' => $bookData['title']]);
-
+        // Associate existing books
+        foreach ($data['bookIds'] as $bookId) {
+            $book = $bookRepository->find($bookId);
             if (!$book) {
-                $book = new Book();
-                $book->setTitle($bookData['title']);
-                $book->setISBN($bookData['ISBN'] ?? null);
-
-                // Use DateTime::createFromFormat to handle year only
-                if (isset($bookData['publishedYear'])) {
-                    $publishedDate = \DateTime::createFromFormat('Y-m-d', $bookData['publishedYear']);
-                    if ($publishedDate === false) {
-                        return $this->json(['error' => 'Invalid published year format'], Response::HTTP_BAD_REQUEST);
-                    }
-                    $book->setPublishedYear($publishedDate);
-                }
-
-                $book->setDescription($bookData['description'] ?? null);
-                $book->setImage($bookData['image'] ?? null);
-
-
-                // Check and get or create Category
-                if (isset($bookData['category']) && is_array($bookData['category'])) {
-                    $categoryName = $bookData['category']['name'] ?? null;
-                    if ($categoryName && !isset($categoryMap[$categoryName])) {
-                        $category = new Category();
-                        $category->setName($categoryName);
-                        $category->setDescription($bookData['category']['description'] ?? null);
-                        // Persist new category
-                        $this->entityManager->persist($category);
-                        // Add to category map
-                        $categoryMap[$categoryName] = $category;
-                    }
-                    // Set the book's category
-                    if ($categoryName) {
-                        $book->setCategory($categoryMap[$categoryName] ?? null);
-                    }
-                }
-
-                $book->setAvailable($bookData['available'] ?? false);
-
-                $this->entityManager->persist($book);
+                return new JsonResponse(['error' => 'Book not found: ' . $bookId], Response::HTTP_NOT_FOUND);
             }
 
-            // Add author to the book and book to the author
+            // Associate the author with the book and vice versa
             $book->addAuthor($author);
             $author->addBook($book);
         }
 
-        $this->entityManager->persist($author);
-        $this->entityManager->flush();
+        $entityManager->persist($author);
+        $entityManager->flush();
 
         return new JsonResponse([
             'message' => 'Author created successfully',
             'id' => $author->getId()
         ], Response::HTTP_CREATED);
     }
-    #[Route('/{id}', name: 'author_edit', methods: ['PUT'])]
+
+    #[Route('/{id}/edit', name: 'author_edit', methods: ['PUT'])]
     public function edit(
-        int $id, Request $request,
+        int $id,
+        Request $request,
         AuthorRepository $authorRepository,
         BookRepository $bookRepository,
-        CategoryRepository $categoryRepository,
         EntityManagerInterface $entityManager
-    ): JsonResponse
-    {
-        // Retrieve the author to edit using the AuthorRepository
+    ): JsonResponse {
+        // Retrieve the author to edit
         $author = $authorRepository->find($id);
-        //dd($author);
 
         // Check if the author exists
-        if (!$author) {
+        if (!$author instanceof Author) {
             return $this->json(['message' => 'Author not found'], Response::HTTP_NOT_FOUND);
         }
 
         // Retrieve the data sent from the request
         $data = json_decode($request->getContent(), true);
 
-        // Validate the JSON data
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return $this->json(['message' => 'Invalid JSON data'], Response::HTTP_BAD_REQUEST);
-        }
+        //dd($data);
 
         // Update the author details
         $author->setFirstName($data['firstName'] ?? $author->getFirstName());
@@ -173,81 +117,33 @@ class AuthorController extends AbstractController
         $author->setBiography($data['biography'] ?? $author->getBiography());
         $author->setBirthDate(isset($data['birthDate']) ? new \DateTime($data['birthDate']) : $author->getBirthDate());
 
-        // Handle books
-        if (isset($data['books'])) {
-            //$bookRepository = $entityManager->getRepository(Book::class);
-            //$categoryRepository = $entityManager->getRepository(Category::class);
-            $existingBooks = $author->getBooks()->toArray();
 
-            foreach ($data['books'] as $bookData) {
-                if (!isset($bookData['title'])) {
-                    return $this->json(['message' => 'Book title is required'], Response::HTTP_BAD_REQUEST);
-                }
+        $author->getBooks()->clear();
 
-                $book = $bookRepository->findOneBy(['title' => $bookData['title']]) ?? new Book();
-                $book->setTitle($bookData['title']);
-                $book->setISBN($bookData['ISBN'] ?? $book->getISBN());
-                $book->setDescription($bookData['description'] ?? $book->getDescription());
-                $book->setImage($bookData['image'] ?? $book->getImage());
-                $book->setAvailable($bookData['available'] ?? $book->isAvailable());
+        // Retrieve 'bookIds' from the data
+        $bookIds = $data['bookIds'];
+        //dd($bookIds) ;
 
-                if (isset($bookData['publishedYear'])) {
-                    $publishedDate = new \DateTime();
-                    $publishedDate->setDate((int)$bookData['publishedYear'], 1, 1);
-                    $book->setPublishedYear($publishedDate);
-                }
-
-                $book->setDescription($bookData['description'] ?? null);
-                $book->setImage($bookData['image'] ?? null);
-
-                // Handle category
-                if (isset($bookData['category'])) {
-                    $category = $categoryRepository->findOneBy(['name' => $bookData['category']['name']]) ?? new Category();
-                    $category->setName($bookData['category']['name']);
-                    $category->setDescription($bookData['category']['description'] ?? $category->getDescription());
-                    $entityManager->persist($category);
-                    $book->setCategory($category);
-                }
-                $entityManager->persist($book);
-                // Ensure the book is linked to the author
-                if (!$author->getBooks()->contains($book)) {
-                    $author->addBook($book);
-                }
+        // Iterate over each 'bookId' in the array
+        foreach ($bookIds as $bookId) {
+            $book = $bookRepository->find($bookId);
+            if (!$book) {
+                return new JsonResponse(['error' => 'Book not found: ' . $bookId], Response::HTTP_NOT_FOUND);
             }
-            // Remove books that are no longer in the list
-            foreach ($existingBooks as $existingBook) {
-                if (!in_array($existingBook->getTitle(), array_column($data['books'], 'title'))) {
-                    $author->removeBook($existingBook);
-                }
-            }
+
+            // Associate the author with the book and vice versa
+            $book->addAuthor($author);
+            $author->addBook($book);
         }
 
-        // Persist changes to the author
         $entityManager->persist($author);
         $entityManager->flush();
 
-        // Return a JSON response indicating success
-        return new JsonResponse([
-            'message' => 'Author updated successfully',
-            'author' => [
-                'id' => $author->getId(),
-                'firstName' => $author->getFirstName(),
-                'lastName' => $author->getLastName(),
-                'biography' => $author->getBiography(),
-                'birthDate' => $author->getBirthDate()->format('Y-m-d'),
-                'books' => $author->getBooks()->map(function(Book $book) {
-                    return [
-                        'id' => $book->getId(),
-                        'title' => $book->getTitle(),
-                        'category' => $book->getCategory() ? [
-                            'id' => $book->getCategory()->getId(),
-                            'name' => $book->getCategory()->getName()
-                        ] : null
-                    ];
-                })->toArray()
-            ]
-        ], Response::HTTP_OK);
+        // Return the updated author data with associated book IDs
+        return $this->json($author, JsonResponse::HTTP_OK, [], ['groups' => 'author:read']);
     }
+
+
     #[Route('/{id}', name: 'author_delete', methods: ['DELETE'])]
     public function delete(int $id, AuthorRepository $authorRepository,EntityManagerInterface $entityManager): Response
     {
