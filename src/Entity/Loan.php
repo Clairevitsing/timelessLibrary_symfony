@@ -31,7 +31,7 @@ class Loan
     #[Groups(['loan:read', 'user:read','bookLoan:read'])]
     private ?\DateTimeInterface $returnDate = null;
 
-    #[ORM\ManyToOne(targetEntity: User::class,inversedBy: 'loans', cascade:['persist', 'remove'])]
+    #[ORM\ManyToOne(targetEntity: User::class,inversedBy: 'loans', cascade:['persist'])]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['loan:read','bookLoan:read'])]
     #[MaxDepth(1)]
@@ -41,7 +41,7 @@ class Loan
     /**
      * @var Collection<int, BookLoan>
      */
-    #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'loan', cascade:['persist', 'remove'],orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: BookLoan::class, mappedBy: 'loan', cascade:['persist'],orphanRemoval: true)]
     #[Groups(['loan:read'])]
     #[MaxDepth(1)]
     private Collection $bookLoans;

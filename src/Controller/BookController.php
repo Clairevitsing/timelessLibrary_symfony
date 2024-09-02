@@ -60,7 +60,7 @@ class BookController extends AbstractController
         }
 
         // Check that all required fields are present
-        if (!isset($data['title'], $data['ISBN'], $data['publishedYear'], $data['description'], $data['image'], $data['available'], $data['category'], $data['authors'])) {
+        if (!isset($data['title'], $data['ISBN'], $data['publishedYear'], $data['description'], $data['image'], $data['available'], $data['categoryId'], $data['authorIds'])) {
             return new JsonResponse(['error' => 'Missing required fields'], Response::HTTP_BAD_REQUEST);
         }
 
@@ -77,29 +77,17 @@ class BookController extends AbstractController
         $book->setAvailable($data['available']);
 
         // Handle category
-        $category = $categoryRepository->findOneBy(['name' => $data['category']['name']]);
+        $category = $categoryRepository->find($data['categoryId']);
         if (!$category) {
-            $category = new Category();
-            $category->setName($data['category']['name']);
-            $category->setDescription($data['category']['description'] ?? null);
-            $this->entityManager->persist($category);
+            return new JsonResponse(['error' => 'Category not found'], Response::HTTP_BAD_REQUEST);
         }
         $book->setCategory($category);
 
         // Handle authors
-        foreach ($data['authors'] as $authorData) {
-            $author = $authorRepository->findOneBy(['firstName' => $authorData['firstName'], 'lastName' => $authorData['lastName']]);
+        foreach ($data['authorIds'] as $authorId) {
+            $author = $authorRepository->find($authorId);
             if (!$author) {
-                $author = new Author();
-                $author->setFirstName($authorData['firstName']);
-                $author->setLastName($authorData['lastName']);
-                $author->setBiography($authorData['biography'] ?? null);
-                $birthDate = DateTime::createFromFormat('Y-m-d', $authorData['birthDate']);
-                if ($birthDate === false) {
-                    return $this->json(['error' => 'Invalid birth date format for author ' . $authorData['firstName'] . ' ' . $authorData['lastName']], Response::HTTP_BAD_REQUEST);
-                }
-                $author->setBirthDate($birthDate);
-                $this->entityManager->persist($author);
+                return new JsonResponse(['error' => 'Author not found: ' . $authorId], Response::HTTP_BAD_REQUEST);
             }
             $book->addAuthor($author);
             $author->addBook($book);
@@ -120,7 +108,8 @@ class BookController extends AbstractController
         Request $request,
         BookRepository $bookRepository,
         CategoryRepository $categoryRepository,
-        AuthorRepository $authorRepository
+        AuthorRepository $authorRepository,
+        EntityManagerInterface $entityManager
     ): JsonResponse
     {
         $content = $request->getContent();
@@ -142,68 +131,44 @@ class BookController extends AbstractController
         // Update the Book details
         $book->setTitle($data['title'] ?? $book->getTitle());
         $book->setISBN($data['ISBN'] ?? $book->getISBN());
-        $book->setPublishedYear(isset($data['publishedYear']) ? new DateTime($data['publishedYear']) : $book->getPublishedYear());
+        if (isset($data['publishedYear'])) {
+            $publishedDate = DateTime::createFromFormat('Y-m-d', $data['publishedYear']);
+            if ($publishedDate === false) {
+                return $this->json(['error' => 'Invalid published year format'], Response::HTTP_BAD_REQUEST);
+            }
+            $book->setPublishedYear($publishedDate);
+        }
         $book->setDescription($data['description'] ?? $book->getDescription());
         $book->setImage($data['image'] ?? $book->getImage());
         $book->setAvailable($data['available'] ?? $book->getAvailable());
 
         // Handle Category
-        if (isset($data['category'])) {
-            $categoryName = $data['category']['name'];
-            $category = $categoryRepository->findOneBy(['name' => $categoryName]);
-
+        if (isset($data['categoryId'])) {
+            $category = $categoryRepository->find($data['categoryId']);
             if (!$category) {
-                // Create a new Category if it doesn't exist
-                $category = new Category();
-                $category->setName($categoryName);
+                return new JsonResponse(['error' => 'Category not found'], Response::HTTP_BAD_REQUEST);
             }
-
-            // Update other attributes of the Category
-            $category->setDescription($data['category']['description'] ?? $category->getDescription());
-            $this->entityManager->persist($category);
-
             $book->setCategory($category);
         }
 
         // Handle Authors
-        if (isset($data['authors']) && is_array($data['authors'])) {
+        if (isset($data['authorIds']) && is_array($data['authorIds'])) {
             // Remove existing authors
             foreach ($book->getAuthors() as $existingAuthor) {
                 $book->removeAuthor($existingAuthor);
             }
 
-            foreach ($data['authors'] as $authorData) {
-                $author = $authorRepository->findOneBy([
-                    'firstName' => $authorData['firstName'],
-                    'lastName' => $authorData['lastName']
-                ]);
-
+            foreach ($data['authorIds'] as $authorId) {
+                $author = $authorRepository->find($authorId);
                 if (!$author) {
-                    // Create a new Author if it doesn't exist
-                    $author = new Author();
-                    $author->setFirstName($authorData['firstName']);
-                    $author->setLastName($authorData['lastName']);
-                    $author->setBiography($authorData['biography'] ?? null);
-                    $birthDate = DateTime::createFromFormat('Y-m-d', $authorData['birthDate']);
-                    if ($birthDate === false) {
-                        return $this->json(['error' => 'Invalid birth date format for author ' . $authorData['firstName'] . ' ' . $authorData['lastName']], Response::HTTP_BAD_REQUEST);
-                    }
-                    $author->setBirthDate($birthDate);
-                    $this->entityManager->persist($author);
-                }  else {
-                    // Update existing author details
-                    $author->setBiography($authorData['biography'] ?? $author->getBiography());
-                    $author->setBirthDate(isset($authorData['birthDate']) ? new DateTime($authorData['birthDate']) : $author->getBirthDate());
-                    $this->entityManager->persist($author);
+                    return new JsonResponse(['error' => 'Author not found: ' . $authorId], Response::HTTP_BAD_REQUEST);
                 }
-
                 $book->addAuthor($author);
-                $author->addBook($book);
             }
         }
 
-        $this->entityManager->persist($book);
-        $this->entityManager->flush();
+        $entityManager->persist($book);
+        $entityManager->flush();
 
         return new JsonResponse([
             'message' => 'Book updated successfully',
