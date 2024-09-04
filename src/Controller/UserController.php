@@ -69,7 +69,8 @@ class UserController extends AbstractController
         Request $request,
         UserRepository $userRepository,
         EntityManagerInterface $entityManager,
-        UserPasswordHasherInterface $passwordHasher
+        UserPasswordHasherInterface $passwordHasher,
+        LoanRepository $loanRepository
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -78,7 +79,7 @@ class UserController extends AbstractController
             return $this->json(['error' => 'Invalid JSON data'], Response::HTTP_BAD_REQUEST);
         }
         // Check if all required fields are present
-        if (!isset($data['email'], $data['roles'], $data['firstName'], $data['lastName'], $data['userName'], $data['phoneNumber'], $data['subStartDate'], $data['subEndDate'])) {
+        if (!isset($data['email'], $data['roles'], $data['firstName'], $data['lastName'], $data['userName'], $data['phoneNumber'], $data['subStartDate'], $data['subEndDate'], $data['password'], $data['loanIds'])) {
             return $this->json(['error' => 'Missing fields'], Response::HTTP_BAD_REQUEST);
         }
         // Validate email format
@@ -98,7 +99,6 @@ class UserController extends AbstractController
         $user->setLastName($data['lastName']);
         $user->setUserName($data['userName']);
         $user->setPhoneNumber($data['phoneNumber']);
-        $user->setPlainPassword($data['password']);
         $user->setSubStartDate(new \DateTime($data['subStartDate']));
         $user->setSubEndDate(new \DateTime($data['subEndDate']));
 
@@ -106,17 +106,19 @@ class UserController extends AbstractController
         $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
         $user->setPassword($hashedPassword);
 
-        // Create the loans
-        foreach ($data['loans'] as $loanData) {
-            $loan = new Loan();
-            $loan->setLoanDate(new \DateTime($loanData['loanDate']));
-            $loan->setDueDate(new \DateTime($loanData['dueDate']));
-            $loan->setReturnDate($loanData['returnDate'] ? new \DateTime($loanData['returnDate']) : null);
+        // Associate existing loans to the user
+        foreach ($data['loanIds'] as $loanId) {
+            $loan = $loanRepository->find($loanId);
+            if (!$loan) {
+                return $this->json(['error' => 'Loan not found with ID: ' . $loanId], Response::HTTP_BAD_REQUEST);
+            }
             $user->addLoan($loan);
         }
+
         // Persist and flush the entity
         $entityManager->persist($user);
         $entityManager->flush();
+
         return $this->json($user, Response::HTTP_CREATED, [], ['groups' => 'user:read']);
     }
 
@@ -125,77 +127,78 @@ class UserController extends AbstractController
         int $id,
         Request $request,
         UserRepository $userRepository,
-        LoanRepository $loanRepository,
         EntityManagerInterface $entityManager,
-        UserPasswordHasherInterface $passwordHasher
+        UserPasswordHasherInterface $passwordHasher,
+        LoanRepository $loanRepository
     ): JsonResponse
     {
-        $content = $request->getContent();
-        if (empty($content)) {
-            return $this->json(['error' => 'No data provided'], JsonResponse::HTTP_BAD_REQUEST);
-        }
-
-        $data = json_decode($content, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return $this->json(['error' => 'Invalid JSON'], JsonResponse::HTTP_BAD_REQUEST);
-        }
-
-        // Fetch the User entity by ID
         $user = $userRepository->find($id);
         if (!$user) {
-            return $this->json(['error' => 'User not found'], JsonResponse::HTTP_NOT_FOUND);
+            return $this->json(['error' => 'User not found'], Response::HTTP_NOT_FOUND);
         }
 
-        // Update the User details
-        $user->setEmail($data['email'] ?? $user->getEmail());
-        $user->setRoles($data['roles'] ?? $user->getRoles());
-        $user->setFirstName($data['firstName'] ?? $user->getFirstName());
-        $user->setLastName($data['lastName'] ?? $user->getLastName());
-        $user->setUserName($data['userName'] ?? $user->getUserName());
-        $user->setPhoneNumber($data['phoneNumber'] ?? $user->getPhoneNumber());
+        $data = json_decode($request->getContent(), true);
+        if ($data === null) {
+            return $this->json(['error' => 'Invalid JSON data'], Response::HTTP_BAD_REQUEST);
+        }
 
+        // Update user fields if provided
+        if (isset($data['email'])) {
+            if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                return $this->json(['error' => 'Invalid email format'], Response::HTTP_BAD_REQUEST);
+            }
+            $existingUser = $userRepository->findOneBy(['email' => $data['email']]);
+            if ($existingUser && $existingUser->getId() !== $user->getId()) {
+                return $this->json(['error' => 'This email is already in use'], Response::HTTP_CONFLICT);
+            }
+            $user->setEmail($data['email']);
+        }
 
+        if (isset($data['roles'])) $user->setRoles($data['roles']);
+        if (isset($data['firstName'])) $user->setFirstName($data['firstName']);
+        if (isset($data['lastName'])) $user->setLastName($data['lastName']);
+        if (isset($data['userName'])) $user->setUserName($data['userName']);
+        if (isset($data['phoneNumber'])) $user->setPhoneNumber($data['phoneNumber']);
+        if (isset($data['subStartDate'])) $user->setSubStartDate(new \DateTime($data['subStartDate']));
+        if (isset($data['subEndDate'])) $user->setSubEndDate(new \DateTime($data['subEndDate']));
 
-        // For password
         if (isset($data['password'])) {
-            $user->setPassword($passwordHasher->hashPassword($user, $data['password']));
+            $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
+            $user->setPassword($hashedPassword);
         }
 
-        if (isset($data['subStartDate'])) {
-            $user->setSubStartDate(new \DateTime($data['subStartDate']));
-        }
-        if (isset($data['subEndDate'])) {
-            $user->setSubEndDate(new \DateTime($data['subEndDate']));
-        }
+        // Update loans if provided
+        if (isset($data['loanIds'])) {
+            // Get current loan IDs
+            $currentLoanIds = $user->getLoans()->map(function($loan) {
+                return $loan->getId();
+            })->toArray();
 
-        // Handle Loans
-        if (isset($data['loans']) && is_array($data['loans'])) {
-            foreach ($data['loans'] as $loanData) {
-                if (isset($loanData['id'])) {
-                    // Loan exists, update it
-                    $loan = $loanRepository->find($loanData['id']);
-                    if (!$loan) {
-                        return $this->json(['error' => 'Loan not found'], JsonResponse::HTTP_NOT_FOUND);
+            // Remove loans that are not in the new list
+            foreach ($currentLoanIds as $loanId) {
+                if (!in_array($loanId, $data['loanIds'])) {
+                    $loan = $loanRepository->find($loanId);
+                    if ($loan) {
+                        $user->removeLoan($loan);
                     }
-                } else {
-                    // New loan, create it
-                    $loan = new Loan();
+                }
+            }
+
+            // Add new loans
+            foreach ($data['loanIds'] as $loanId) {
+                if (!in_array($loanId, $currentLoanIds)) {
+                    $loan = $loanRepository->find($loanId);
+                    if (!$loan) {
+                        return $this->json(['error' => 'Loan not found with ID: ' . $loanId], Response::HTTP_BAD_REQUEST);
+                    }
                     $user->addLoan($loan);
                 }
-
-                // Update loan details
-                $loan->setLoanDate(new \DateTime($loanData['loanDate']));
-                $loan->setDueDate(new \DateTime($loanData['dueDate']));
-                $loan->setReturnDate(isset($loanData['returnDate']) ? new \DateTime($loanData['returnDate']) : null);
-
-                $entityManager->persist($loan);
             }
         }
 
-        $entityManager->persist($user);
         $entityManager->flush();
 
-        return $this->json($user, JsonResponse::HTTP_OK, [], ['groups' => 'user:read']);
+        return $this->json($user, Response::HTTP_OK, [], ['groups' => 'user:read']);
     }
 
     #[Route('/{id}', name: 'user_delete', methods: ['DELETE'])]
