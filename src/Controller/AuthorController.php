@@ -3,11 +3,8 @@
 namespace App\Controller;
 
 use App\Entity\Author;
-use App\Entity\Book;
-use App\Entity\Category;
 use App\Repository\AuthorRepository;
 use App\Repository\BookRepository;
-use App\Repository\CategoryRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,10 +15,6 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('api/authors')]
 class AuthorController extends AbstractController
 {
-    public function __construct(
-        private AuthorRepository $authorRepository
-    ){
-    }
     #[Route('/', name: 'author_index', methods: ['GET'])]
     public function index(AuthorRepository $authorRepository): JsonResponse
     {

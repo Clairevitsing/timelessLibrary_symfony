@@ -69,8 +69,7 @@ class UserController extends AbstractController
         Request $request,
         UserRepository $userRepository,
         EntityManagerInterface $entityManager,
-        UserPasswordHasherInterface $passwordHasher,
-        LoanRepository $loanRepository
+        UserPasswordHasherInterface $passwordHasher
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -79,7 +78,7 @@ class UserController extends AbstractController
             return $this->json(['error' => 'Invalid JSON data'], Response::HTTP_BAD_REQUEST);
         }
         // Check if all required fields are present
-        if (!isset($data['email'], $data['roles'], $data['firstName'], $data['lastName'], $data['userName'], $data['phoneNumber'], $data['subStartDate'], $data['subEndDate'], $data['password'], $data['loanIds'])) {
+        if (!isset($data['email'], $data['roles'], $data['firstName'], $data['lastName'], $data['userName'], $data['phoneNumber'], $data['subStartDate'], $data['subEndDate'], $data['password'])) {
             return $this->json(['error' => 'Missing fields'], Response::HTTP_BAD_REQUEST);
         }
         // Validate email format
@@ -106,21 +105,13 @@ class UserController extends AbstractController
         $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
         $user->setPassword($hashedPassword);
 
-        // Associate existing loans to the user
-        foreach ($data['loanIds'] as $loanId) {
-            $loan = $loanRepository->find($loanId);
-            if (!$loan) {
-                return $this->json(['error' => 'Loan not found with ID: ' . $loanId], Response::HTTP_BAD_REQUEST);
-            }
-            $user->addLoan($loan);
-        }
-
-        // Persist and flush the entity
+        // Persist and save the user without loans
         $entityManager->persist($user);
         $entityManager->flush();
 
         return $this->json($user, Response::HTTP_CREATED, [], ['groups' => 'user:read']);
     }
+
 
     #[Route('/{id}/edit', name: 'user_edit', methods: ['PUT'])]
     public function edit(

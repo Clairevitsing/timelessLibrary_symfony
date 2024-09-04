@@ -2,9 +2,7 @@
 
 namespace App\Controller;
 
-use App\Entity\Author;
 use App\Entity\Book;
-use App\Entity\Category;
 use App\Repository\AuthorRepository;
 use App\Repository\BookRepository;
 use App\Repository\CategoryRepository;
@@ -102,7 +100,7 @@ class BookController extends AbstractController
         ], Response::HTTP_CREATED);
     }
 
-    #[Route('/{id}', name: 'book_edit', methods: ['PUT'])]
+    #[Route('/{id}/edit', name: 'book_edit', methods: ['PUT'])]
     public function edit(
         int $id,
         Request $request,

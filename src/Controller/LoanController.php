@@ -4,7 +4,6 @@ namespace App\Controller;
 
 use App\Entity\BookLoan;
 use App\Entity\Loan;
-use App\Entity\User;
 use App\Repository\BookRepository;
 use App\Repository\LoanRepository;
 use App\Repository\UserRepository;
@@ -13,7 +12,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/loans')]
@@ -42,32 +40,39 @@ class LoanController extends AbstractController
     }
 
     #[Route('/new', name: 'loan_create', methods: ['POST'])]
-    public function createLoan(Request $request,
-                               EntityManagerInterface $entityManager,
-                               UserRepository $userRepository,
-                               BookRepository $bookRepository,
-                               UserPasswordHasherInterface $passwordHasher
+    public function createLoan(
+        Request $request,
+        EntityManagerInterface $entityManager,
+        UserRepository $userRepository,
+        BookRepository $bookRepository
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        if (!$data) {
-            return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
+
+        // Check if JSON decoding failed
+        if ($data === null) {
+            return $this->json(['error' => 'Invalid JSON data'], Response::HTTP_BAD_REQUEST);
         }
 
-        // Check if user exists, if not create a new one
-        $user = $userRepository->findOneBy(['email' => $data['user']['email']]);
+        // Check if all required fields are present
+        if (!isset($data['loanDate'], $data['dueDate'], $data['bookIds'], $data['userId'])) {
+            return $this->json(['error' => 'Missing fields'], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Associate user with the loan
+        $user = $userRepository->find($data['userId']);
         if (!$user) {
-            return $this->json(['message' => 'User not found'], Response::HTTP_NOT_FOUND);
+            return $this->json(['error' => 'User not found with ID: ' . $data['userId']], Response::HTTP_BAD_REQUEST);
         }
 
         // Create the loan
         $loan = new Loan();
         $loan->setLoanDate(new \DateTime($data['loanDate']))
             ->setDueDate(new \DateTime($data['dueDate']))
-            //->setReturnDate(new \DateTime($data['returnDate']))
             ->setUser($user);
 
-        if (array_key_exists('returnDate', $data) && $data['returnDate'] !== null) {
+        // Set returnDate to null if not provided
+        if (isset($data['returnDate']) && $data['returnDate'] !== null) {
             $loan->setReturnDate(new \DateTime($data['returnDate']));
         } else {
             $loan->setReturnDate(null);
@@ -75,27 +80,35 @@ class LoanController extends AbstractController
 
         $entityManager->persist($loan);
 
-        // Add books to the loan
-        foreach ($data['bookLoans'] as $bookLoanData) {
-            $book = $bookRepository->findOneBy(['ISBN' => $bookLoanData['book']['ISBN']]);
+        // Associate books with the loan
+        foreach ($data['bookIds'] as $bookId) {
+            $book = $bookRepository->find($bookId);
             if (!$book) {
-                return $this->json(['error' => 'Book not found: ' . $bookLoanData['book']['ISBN']], Response::HTTP_NOT_FOUND);
+                return $this->json(['error' => 'Book not found with ID: ' . $bookId], Response::HTTP_BAD_REQUEST);
             }
             if (!$book->isAvailable()) {
                 return $this->json(['error' => 'Book not available: ' . $book->getTitle()], Response::HTTP_BAD_REQUEST);
             }
+
+            // Create a new BookLoan entity to link the book and the loan
             $bookLoan = new BookLoan();
             $bookLoan->setBook($book)
                 ->setLoan($loan);
-            $book->setAvailable(false);
-            //$loan->addBookLoan($bookLoan);
+
+            //The book will be unavailable if returnDate is null
+            if ($data['returnDate'] === null) {
+                $book->setAvailable(false);
+            }
+
             $entityManager->persist($bookLoan);
         }
 
+        // Flush all changes to the database
         $entityManager->flush();
 
         return $this->json(['message' => 'Loan created successfully', 'id' => $loan->getId()], Response::HTTP_CREATED);
     }
+
 
     #[Route('/{id}/edit', name: 'loan_edit', methods: ['PUT'])]
     public function editLoan(
@@ -116,44 +129,40 @@ class LoanController extends AbstractController
             return $this->json(['error' => 'Loan not found'], Response::HTTP_NOT_FOUND);
         }
 
-        // Update loan dates
-        if (array_key_exists('loanDate', $data)) {
-            $loan->setLoanDate(new \DateTime($data['loanDate']));
-        }
-        if (array_key_exists('dueDate', $data)) {
-            $loan->setDueDate(new \DateTime($data['dueDate']));
-        }
-        if (array_key_exists('returnDate', $data)) {
-            $loan->setReturnDate($data['returnDate'] ? new \DateTime($data['returnDate']) : null);
-        }
+        // Update loan dates if provided in the request data
+        $loan->setLoanDate(!empty($data['loanDate']) ? new \DateTime($data['loanDate']) : $loan->getLoanDate());
+        $loan->setDueDate(!empty($data['dueDate']) ? new \DateTime($data['dueDate']) : $loan->getDueDate());
+        $loan->setReturnDate(!empty($data['returnDate']) ? new \DateTime($data['returnDate']) : $loan->getReturnDate());
 
         // Handle book loans
-        if (array_key_exists('bookLoans', $data) && is_array($data['bookLoans'])) {
-            // First, make all current books available
+        if (array_key_exists('bookIds', $data) && is_array($data['bookIds'])) {
+            // First, make all books in the current loan available
             foreach ($loan->getBookLoans() as $existingBookLoan) {
-                $existingBookLoan->getBook()->setAvailable(true);
+                $book = $existingBookLoan->getBook();
+                // Ensure book is available only if it was marked as unavailable before
+                if (!$book->isAvailable()) {
+                    $book->setAvailable(true);
+                    $entityManager->persist($book);
+                }
                 $entityManager->remove($existingBookLoan);
             }
 
             // Then add new book loans
-            foreach ($data['bookLoans'] as $bookLoanData) {
-                if (array_key_exists('book', $bookLoanData) && array_key_exists('ISBN', $bookLoanData['book'])) {
-                    $book = $bookRepository->findOneBy(['ISBN' => $bookLoanData['book']['ISBN']]);
-                    if (!$book) {
-                        return $this->json(['error' => 'Book not found: ' . $bookLoanData['book']['ISBN']], Response::HTTP_NOT_FOUND);
-                    }
-                    if (!$book->isAvailable()) {
-                        return $this->json(['error' => 'Book not available: ' . $book->getTitle()], Response::HTTP_BAD_REQUEST);
-                    }
-
-                    $bookLoan = new BookLoan();
-                    $bookLoan->setBook($book)
-                        ->setLoan($loan);
-                    $book->setAvailable(false);
-                    $entityManager->persist($bookLoan);
-                } else {
-                    return $this->json(['error' => 'Invalid book data'], Response::HTTP_BAD_REQUEST);
+            foreach ($data['bookIds'] as $bookId) {
+                $book = $bookRepository->find($bookId);
+                if (!$book) {
+                    return $this->json(['error' => 'Book not found with ID: ' . $bookId], Response::HTTP_NOT_FOUND);
                 }
+                if (!$book->isAvailable()) {
+                    return $this->json(['error' => 'Book not available: ' . $book->getTitle()], Response::HTTP_BAD_REQUEST);
+                }
+
+                // Create a new BookLoan entity to link the book and the loan
+                $bookLoan = new BookLoan();
+                $bookLoan->setBook($book)
+                    ->setLoan($loan);
+                $book->setAvailable(false);
+                $entityManager->persist($bookLoan);
             }
         }
 
@@ -161,6 +170,7 @@ class LoanController extends AbstractController
 
         return $this->json(['message' => 'Loan updated successfully', 'id' => $loan->getId()], Response::HTTP_OK);
     }
+
 
     #[Route('/{id}', name: 'loan_delete',methods:['DELETE'])]
     public function delete(): Response

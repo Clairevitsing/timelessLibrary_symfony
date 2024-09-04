@@ -2,17 +2,21 @@
 
 namespace App\Controller;
 
+use App\Repository\BookLoanRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
+#[Route('/api/book/loan')]
 class BookLoanController extends AbstractController
 {
-    #[Route('/book/loan', name: 'app_book_loan')]
-    public function index(): Response
+    #[Route('/', name: 'app_book_loan')]
+    public function index(BookLoanRepository $bookLoanRepository): Response
     {
-        return $this->render('book_loan/index.html.twig', [
-            'controller_name' => 'BookLoanController',
-        ]);
+        $bookLoans = $bookLoanRepository->findAll();
+        return $this->json(
+            $bookLoans,
+            context: ['groups' => 'bookLoan:read']
+        );
     }
 }
