@@ -161,7 +161,10 @@ class LoanController extends AbstractController
                 $bookLoan = new BookLoan();
                 $bookLoan->setBook($book)
                     ->setLoan($loan);
-                $book->setAvailable(false);
+                //The book will be unavailable if returnDate is null
+                if ($data['returnDate'] === null) {
+                    $book->setAvailable(false);
+                }
                 $entityManager->persist($bookLoan);
             }
         }
