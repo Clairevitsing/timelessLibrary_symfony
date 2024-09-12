@@ -30,7 +30,7 @@ class BookController extends AbstractController
         return $this->json($books, context: ['groups' => 'book:read']);
     }
 
-    #[Route('/{id}', name: 'book_read', methods: ['GET'])]
+    #[Route('/{id<\d+>}', name: 'book_read', methods: ['GET'])]
     public function read(int $id): JsonResponse
     {
         $book = $this->bookRepository->find($id);
@@ -38,6 +38,38 @@ class BookController extends AbstractController
             throw $this->createNotFoundException('Book not found');
         }
         return $this->json($book, context: ['groups' => 'book:read']);
+    }
+
+    #[Route('/recent', name: 'api_recent_books', methods: ['GET'])]
+    public function getRecentlyPublishedBooks(Request $request): JsonResponse
+    {
+        $page = max(1, $request->query->getInt('page', 1));
+        $limit = max(1, min(100, $request->query->getInt('limit', 10)));
+        $year = $request->query->getInt('year', (int)date('Y'));
+
+        if ($year < 1800 || $year > (int)date('Y')) {
+            return new JsonResponse(['error' => 'Invalid year specified'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $paginationData = $this->bookRepository->findPublishedInYear($page, $limit, $year);
+
+        $books = $paginationData['books'];
+        $totalItems = $paginationData['totalItems'];
+
+        if (empty($books)) {
+            return new JsonResponse(
+                ['message' => 'No books found for the specified criteria'],
+                Response::HTTP_NOT_FOUND
+            );
+        }
+
+        return $this->json([
+            'books' => $books,
+            'page' => $page,
+            'limit' => $limit,
+            'year' => $year,
+            'totalItems' => $totalItems
+        ], Response::HTTP_OK, [], ['groups' => 'book:read']);
     }
 
     #[Route('/new', name: 'book_create', methods: ['POST'])]
