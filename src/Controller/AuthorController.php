@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('api/authors')]
+#[Route('api/authors', stateless: false)]
 class AuthorController extends AbstractController
 {
     #[Route('/', name: 'author_index', methods: ['GET'])]
