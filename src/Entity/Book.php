@@ -35,7 +35,7 @@ class Book
     #[Groups(['book:read', 'author:read','category:read','bookLoan:read','loan:read'])]
     private ?string $description = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(type: Types::TEXT)]
     #[Groups(['book:read', 'author:read','category:read','bookLoan:read','loan:read'])]
     private ?string $image = null;
 
