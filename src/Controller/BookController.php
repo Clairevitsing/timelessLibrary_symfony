@@ -227,5 +227,27 @@ class BookController extends AbstractController
         // Return a success message
         return new JsonResponse(['message' => 'Book deleted successfully'] , Response::HTTP_OK);
     }
+
+    #[Route('/search', name: 'api_book_search', methods: ['GET'])]
+    public function search(Request $request, BookRepository $repository): JsonResponse
+    {
+        // Get the 'title' parameter from the query string
+        $query = $request->query->get('title');
+
+        // Check if the 'title' parameter is provided
+        if (empty($query)) {
+            return $this->json([
+                'error' => 'The "title" parameter is required.',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Search for books with the given title
+        $books = $repository->findBookByTitle($query);
+
+        // Return the results as JSON
+        return $this->json([
+            'books' => $books,
+        ], Response::HTTP_OK, [], ['groups' => 'book:read']);
+    }
 }
 
