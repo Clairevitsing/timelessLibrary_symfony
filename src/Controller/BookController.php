@@ -14,7 +14,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-
 #[Route('/api/books')]
 class BookController extends AbstractController
 {
@@ -249,5 +248,6 @@ class BookController extends AbstractController
             'books' => $books,
         ], Response::HTTP_OK, [], ['groups' => 'book:read']);
     }
+
 }
 

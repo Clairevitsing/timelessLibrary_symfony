@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\MaxDepth;
 
 #[ORM\Entity(repositoryClass: AuthorRepository::class)]
 class Author
@@ -42,6 +43,7 @@ class Author
     #[ORM\JoinTable(name: 'Author_Book')]
     #[ORM\JoinColumn(name: 'author_id', referencedColumnName: 'id')]
     #[ORM\InverseJoinColumn(name: 'book_id', referencedColumnName: 'id')]
+    #[MaxDepth(1)]
     private Collection $books;
 
     public function __construct()
