@@ -16,19 +16,45 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
 class SecurityController extends AbstractController
 {
-    #[Route(path: "/api/login_check", name: 'app_login',methods: ['POST'])]
-    public function login(AuthenticationUtils $authenticationUtils): Response
-    {
-        // if ($this->getUser()) {
-        //     return $this->redirectToRoute('target_path');
-        // }
+   <?php
 
-        // get the login error if there is one
-        $error = $authenticationUtils->getLastAuthenticationError();
-        // last username entered by the user
-        $lastUsername = $authenticationUtils->getLastUsername();
+namespace App\Controller;
 
-        return $this->render('security/login.html.twig', ['last_username' => $lastUsername, 'error' => $error]);
+use App\Entity\User;
+use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
+
+
+class SecurityController extends AbstractController
+{
+    #[Route("/api/login_check", name: "app_login", methods: ["POST"])]
+    public function login(
+        #[CurrentUser] ?User $user,
+        JWTTokenManagerInterface $jwtManager
+    ): JsonResponse {
+        if (!$user) {
+            return $this->json(['error' => 'Invalid credentials'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        // Générer le token JWT pour l'utilisateur authentifié
+        return $this->json([
+            'token' => $jwtManager->create($user),
+            'user' => [
+                'email' => $user->getEmail(),
+                'userName' => $user->getUserName(),
+                'firstName' => $user->getFirstName(),
+                'lastName' => $user->getLastName(),
+            ]
+        ]);
     }
 
     #[Route('/api/register', name: 'user_create', methods: ['POST'])]
