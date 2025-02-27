@@ -18,15 +18,9 @@ class JWTCreatedListener
         // Récupérer le payload du token
         $payload = $event->getData();
 
-        // Ajouter les informations supplémentaires
+        // Ajouter userName au JWT depuis l'entité User
         if (method_exists($user, 'getUserName')) {
             $payload['userName'] = $user->getUserName();
-        }
-        if (method_exists($user, 'getFirstName')) {
-            $payload['firstName'] = $user->getFirstName();
-        }
-        if (method_exists($user, 'getLastName')) {
-            $payload['lastName'] = $user->getLastName();
         }
 
         // Mettre à jour le payload
