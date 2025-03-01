@@ -174,12 +174,48 @@ class LoanController extends AbstractController
         return $this->json(['message' => 'Loan updated successfully', 'id' => $loan->getId()], Response::HTTP_OK);
     }
 
+    #[Route('/user/{userId}', name: 'user_loans', methods: ['GET'])]
+    public function getUserLoans(
+        int $userId,
+        LoanRepository $loanRepository,
+        UserRepository $userRepository
+    ): JsonResponse {
+        $user = $userRepository->find($userId);
+        if (!$user) {
+            return $this->json(['error' => 'User not found'], Response::HTTP_NOT_FOUND);
+        }
 
-    #[Route('/{id}', name: 'loan_delete',methods:['DELETE'])]
-    public function delete(): Response
-    {
-        return $this->render('loan/index.html.twig', [
-            'controller_name' => 'LoanController',
-        ]);
+        $loans = $loanRepository->findBy(['user' => $user]);
+
+        return $this->json(
+            $loans,
+            context: ['groups' => 'loan:read']
+        );
+    }
+
+    #[Route('/{id}', name: 'loan_delete', methods: ['DELETE'])]
+    public function delete(
+        int $id,
+        EntityManagerInterface $entityManager,
+        LoanRepository $loanRepository
+    ): JsonResponse {
+        $loan = $loanRepository->find($id);
+        if (!$loan) {
+            return $this->json(['error' => 'Loan not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        // Rendre tous les livres disponibles avant de supprimer le prêt
+        foreach ($loan->getBookLoans() as $bookLoan) {
+            $book = $bookLoan->getBook();
+            if (!$book->isAvailable()) {
+                $book->setAvailable(true);
+                $entityManager->persist($book);
+            }
+        }
+
+        $entityManager->remove($loan);
+        $entityManager->flush();
+
+        return $this->json(['message' => 'Loan deleted successfully'], Response::HTTP_OK);
     }
 }
