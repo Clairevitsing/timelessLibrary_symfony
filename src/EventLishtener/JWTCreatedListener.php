@@ -24,6 +24,7 @@ class JWTCreatedListener
         // }
 
         // Ajouter les informations supplémentaires de l'utilisateur
+        $payload['userId'] = method_exists($user, 'getId') ? $user->getId() : '';
         $payload['userName'] = method_exists($user, 'getUserName') ? $user->getUserName() : '';
         $payload['firstName'] = method_exists($user, 'getFirstName') ? $user->getFirstName() : '';
         $payload['lastName'] = method_exists($user, 'getLastName') ? $user->getLastName() : '';
