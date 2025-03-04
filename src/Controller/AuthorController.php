@@ -160,4 +160,20 @@ class AuthorController extends AbstractController
         // Return a JSON response indicating success
         return new JsonResponse(['message' => 'Author is deleted successfully'], Response::HTTP_OK);
     }
+
+    #[Route('/authors/search', name: 'api_search_authors', methods: ['GET'])]
+    public function searchAuthors(
+        Request $request,
+        AuthorRepository $authorRepository
+    ): JsonResponse {
+        $firstName = $request->query->get('firstName');
+        $lastName = $request->query->get('lastName');
+
+        $authors = $authorRepository->findBy([
+            'firstName' => $firstName,
+            'lastName' => $lastName
+        ]);
+
+        return $this->json($authors);
+    }
 }

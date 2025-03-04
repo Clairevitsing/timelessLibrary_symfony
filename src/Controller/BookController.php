@@ -249,5 +249,24 @@ class BookController extends AbstractController
         ], Response::HTTP_OK, [], ['groups' => 'book:read']);
     }
 
+    #[Route('/category/{categoryId}', name: 'api_books_by_category', methods: ['GET'])]
+    public function getBooksByCategory(
+        int $categoryId,
+        BookRepository $bookRepository
+    ): JsonResponse {
+        // Find books by category ID
+        $books = $bookRepository->findBy(['category' => $categoryId]);
+
+        // If no books found, return a 404 response
+        if (empty($books)) {
+            return new JsonResponse([
+                'message' => 'No books found in this category'
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        // Return the books as JSON response
+        return $this->json($books, Response::HTTP_OK, [], ['groups' => 'book:read']);
+    }
+
 }
 
