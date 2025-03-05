@@ -12,42 +12,59 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class AuthorRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry)
-    {parent::__construct($registry, Author::class);
+    private $entityManager;
+
+    public function __construct(
+        ManagerRegistry $registry,
+        EntityManagerInterface $entityManager
+    ) {
+        parent::__construct($registry, Author::class);
+        $this->entityManager = $entityManager;
     }
 
+    /**
+     * Remove an author from the database
+     */
     public function remove(Author $author): void
     {
-        // Remove the specified author from the entity manager
         $this->entityManager->remove($author);
-        // Commit the changes to the database
         $this->entityManager->flush();
     }
 
+    /**
+     * Search authors with flexible criteria
+     * 
+     * @param array $criteria Search criteria
+     * @return Author[] Array of matching authors
+     */
+    public function searchAuthors(array $criteria): array
+    {
+        $queryBuilder = $this->createQueryBuilder('a');
 
+        if (!empty($criteria['firstName'])) {
+            $queryBuilder->andWhere('a.firstName LIKE :firstName')
+                ->setParameter('firstName', '%' . $criteria['firstName'] . '%');
+        }
 
-    //    /**
-    //     * @return Author[] Returns an array of Author objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('a')
-    //            ->andWhere('a.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('a.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+        if (!empty($criteria['lastName'])) {
+            $queryBuilder->andWhere('a.lastName LIKE :lastName')
+                ->setParameter('lastName', '%' . $criteria['lastName'] . '%');
+        }
 
-    //    public function findOneBySomeField($value): ?Author
-    //    {
-    //        return $this->createQueryBuilder('a')
-    //            ->andWhere('a.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+        return $queryBuilder->getQuery()->getResult();
+    }
+
+    /**
+     * Find an author by first and last name
+     */
+    public function findByName(string $firstName, string $lastName): ?Author
+    {
+        return $this->createQueryBuilder('a')
+            ->andWhere('a.firstName = :firstName')
+            ->andWhere('a.lastName = :lastName')
+            ->setParameter('firstName', $firstName)
+            ->setParameter('lastName', $lastName)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

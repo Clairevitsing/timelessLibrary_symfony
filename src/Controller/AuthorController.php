@@ -23,14 +23,32 @@ class AuthorController extends AbstractController
         return $this->json($authors, context: ['groups' => 'author:read']);
     }
 
+    // #[Route('/{id}', name: 'author_read', methods: ['GET'])]
+    // public function read(int $id, AuthorRepository $authorRepository): JsonResponse
+    // {
+    //     $author = $authorRepository->find($id);
+    //     if (!$author) {
+    //         throw $this->createNotFoundException('Author not found');
+    //     }
+    //     //dd($author);
+    //     return $this->json($author, context: ['groups' => 'author:read']);
+    // }
+
     #[Route('/{id}', name: 'author_read', methods: ['GET'])]
-    public function read(int $id, AuthorRepository $authorRepository): JsonResponse
+    public function read(string $id, AuthorRepository $authorRepository): JsonResponse
     {
-        $author = $authorRepository->find($id);
+        $authorId = filter_var($id, FILTER_VALIDATE_INT);
+
+        if ($authorId === false) {
+            return $this->json(['error' => 'Invalid author ID'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $author = $authorRepository->find($authorId);
+
         if (!$author) {
             throw $this->createNotFoundException('Author not found');
         }
-        //dd($author);
+
         return $this->json($author, context: ['groups' => 'author:read']);
     }
 
@@ -52,24 +70,30 @@ class AuthorController extends AbstractController
         }
 
         // Check that all required fields are present
-        if (!isset($data['firstName'], $data['lastName'], $data['biography'], $data['birthDate'], $data['bookIds'])) {
-            return $this->json(['error' => 'Missing required fields'], Response::HTTP_BAD_REQUEST);
+        if (!isset($data['firstName'], $data['lastName'], $data['biography'], $data['birthDate'], $data['bookIds']) || !is_array($data['bookIds'])) {
+            return $this->json(['error' => 'Missing or invalid required fields'], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Validate birthDate
+        $birthDate = \DateTime::createFromFormat('Y-m-d', $data['birthDate']);
+        if (!$birthDate) {
+            return $this->json(['error' => 'Invalid birthDate format'], Response::HTTP_BAD_REQUEST);
         }
 
         $author = new Author();
         $author->setFirstName($data['firstName']);
         $author->setLastName($data['lastName']);
         $author->setBiography($data['biography']);
-        $author->setBirthDate(new \DateTime($data['birthDate']));
+        $author->setBirthDate($birthDate);
 
-        // Associate existing books
-        foreach ($data['bookIds'] as $bookId) {
-            $book = $bookRepository->find($bookId);
-            if (!$book) {
-                return new JsonResponse(['error' => 'Book not found: ' . $bookId], Response::HTTP_NOT_FOUND);
-            }
+        // Find all books by their IDs
+        $books = $bookRepository->findBy(['id' => $data['bookIds']]);
+        if (count($books) !== count($data['bookIds'])) {
+            return new JsonResponse(['error' => 'One or more books not found'], Response::HTTP_NOT_FOUND);
+        }
 
-            // Associate the author with the book and vice versa
+        // Associate the author with the books and vice versa
+        foreach ($books as $book) {
             $book->addAuthor($author);
             $author->addBook($book);
         }
@@ -79,7 +103,14 @@ class AuthorController extends AbstractController
 
         return new JsonResponse([
             'message' => 'Author created successfully',
-            'id' => $author->getId()
+            'id' => $author->getId(),
+            'books' => array_map(function ($book) {
+                return [
+                    'id' => $book->getId(),
+                    'title' => $book->getTitle(),
+                    'publicationDate' => $book->getPublicationDate()->format('Y-m-d')
+                ];
+            }, $books) 
         ], Response::HTTP_CREATED);
     }
 
@@ -138,42 +169,91 @@ class AuthorController extends AbstractController
 
 
     #[Route('/{id}', name: 'author_delete', methods: ['DELETE'])]
-    public function delete(int $id, AuthorRepository $authorRepository,EntityManagerInterface $entityManager): Response
+    public function delete(int $id, AuthorRepository $authorRepository, EntityManagerInterface $entityManager): Response
     {
         // Retrieve the author to delete using the AuthorRepository
         $author = $authorRepository->find($id);
 
-        //dd($author);
-
-        // Check if the animal exists
+        // Check if the author exists
         if (!$author) {
+            // If not, return a JSON response with a 404 Not Found status
             return new JsonResponse(['message' => 'Author not found'], Response::HTTP_NOT_FOUND);
         }
 
-        // Use the repository's remove method to delete the animal
-        //$authorRepository->remove($author);
-        // Remove the specified author from the entity manager
-        $entityManager->remove($author);
-        // Commit the changes to the database
-        $entityManager->flush();
+        try {
+            // Remove the specified author from the entity manager
+            $entityManager->remove($author);
+            // Commit the changes to the database
+            $entityManager->flush();
 
-        // Return a JSON response indicating success
-        return new JsonResponse(['message' => 'Author is deleted successfully'], Response::HTTP_OK);
+            // Return a JSON response indicating success
+            return new JsonResponse(['message' => 'Author deleted successfully'], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            // In case of an error during the removal process
+            return new JsonResponse(['message' => 'Failed to delete author', 'error' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    #[Route('/authors/search', name: 'api_search_authors', methods: ['GET'])]
+
+    #[Route('/search', name: 'api_search_authors', methods: ['GET'])]
     public function searchAuthors(
         Request $request,
         AuthorRepository $authorRepository
     ): JsonResponse {
-        $firstName = $request->query->get('firstName');
-        $lastName = $request->query->get('lastName');
+        try {
+            $firstName = $request->query->get('firstName');
+            $lastName = $request->query->get('lastName');
 
-        $authors = $authorRepository->findBy([
-            'firstName' => $firstName,
-            'lastName' => $lastName
-        ]);
+            // Log incoming parameters
+            $this->container->get('logger')->info('Search Parameters', [
+                'firstName' => $firstName,
+                'lastName' => $lastName
+            ]);
 
-        return $this->json($authors);
+            // Validate input parameters
+            if (empty($firstName) && empty($lastName)) {
+                return $this->json([
+                    'error' => 'Please provide at least one search criterion'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            // Flexible search criteria
+            $queryBuilder = $authorRepository->createQueryBuilder('a');
+
+            if (!empty($firstName)) {
+                $queryBuilder->andWhere('a.firstName LIKE :firstName')
+                    ->setParameter('firstName', '%' . $firstName . '%');
+            }
+
+            if (!empty($lastName)) {
+                $queryBuilder->andWhere('a.lastName LIKE :lastName')
+                    ->setParameter('lastName', '%' . $lastName . '%');
+            }
+
+            $authors = $queryBuilder->getQuery()->getResult();
+
+            // Log number of authors found
+            $this->container->get('logger')->info('Authors found', [
+                'count' => count($authors)
+            ]);
+
+            // If no authors found
+            if (empty($authors)) {
+                return $this->json([], Response::HTTP_OK);
+            }
+
+            return $this->json($authors, context: ['groups' => 'author:read']);
+        } catch (\Exception $e) {
+            // Log the full exception details
+            $this->container->get('logger')->error('Exception in searchAuthors', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->json([
+                'error' => 'An unexpected error occurred',
+                'details' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }
