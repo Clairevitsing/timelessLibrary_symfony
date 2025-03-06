@@ -123,20 +123,21 @@ class CategoryController extends AbstractController
         return $this->json(['message' => 'Category deleted successfully'], JsonResponse::HTTP_OK);
     }
 
+    #[Route('/{id}/books', name: 'get_books_by_category', methods: ['GET'])]
     public function getBooksByCategory(
-        int $categoryId,
+        int $id,  // Changé de $categoryId à $id pour correspondre au paramètre de route
         BookRepository $bookRepository,
         CategoryRepository $categoryRepository
     ): JsonResponse {
         // Use the custom repository method
-        $categoryWithBooks = $categoryRepository->findWithBooks($categoryId);
+        $categoryWithBooks = $categoryRepository->findWithBooks($id);
 
         if (!$categoryWithBooks) {
             return new JsonResponse(['message' => 'Category not found'], Response::HTTP_NOT_FOUND);
         }
 
         // Access the books from the result
-        $books = $categoryWithBooks->getBooks(); 
+        $books = $categoryWithBooks->getBooks();
 
         return $this->json([
             'books' => $books
