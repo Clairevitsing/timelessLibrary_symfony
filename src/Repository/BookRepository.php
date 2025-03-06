@@ -55,15 +55,15 @@ class BookRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    public function findBooksByCategory(int $categoryId): array
-    {
-        return $this->createQueryBuilder('b')
-            ->leftJoin('b.category', 'c')
-            ->where('c.id = :categoryId')
-            ->setParameter('categoryId', $categoryId)
-            ->getQuery()
-            ->getResult();
-    }
+    // public function findBooksByCategory(int $categoryId): array
+    // {
+    //     return $this->createQueryBuilder('b')
+    //         ->leftJoin('b.category', 'c')
+    //         ->where('c.id = :categoryId')
+    //         ->setParameter('categoryId', $categoryId)
+    //         ->getQuery()
+    //         ->getResult();
+    // }
 
     //    /**
     //     * @return Book[] Returns an array of Book objects

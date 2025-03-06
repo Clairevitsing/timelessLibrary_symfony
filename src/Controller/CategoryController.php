@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Category;
 use App\Repository\CategoryRepository;
+use App\Repository\BookRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -120,5 +121,25 @@ class CategoryController extends AbstractController
         }
 
         return $this->json(['message' => 'Category deleted successfully'], JsonResponse::HTTP_OK);
+    }
+
+    public function getBooksByCategory(
+        int $categoryId,
+        BookRepository $bookRepository,
+        CategoryRepository $categoryRepository
+    ): JsonResponse {
+        // Use the custom repository method
+        $categoryWithBooks = $categoryRepository->findWithBooks($categoryId);
+
+        if (!$categoryWithBooks) {
+            return new JsonResponse(['message' => 'Category not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        // Access the books from the result
+        $books = $categoryWithBooks->getBooks(); 
+
+        return $this->json([
+            'books' => $books
+        ], Response::HTTP_OK, [], ['groups' => 'book:read']);
     }
 }
