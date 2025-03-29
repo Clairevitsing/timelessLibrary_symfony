@@ -62,11 +62,17 @@ security:
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
-        - { path: ^/admin, roles: ROLE_ADMIN }
+        #- { path: ^/admin, roles: ROLE_ADMIN }
         # - { path: ^/api/users, roles: IS_AUTHENTICATED_ANONYMOUSLY, methods: POST }
         # - { path: ^/api/users, roles: [ROLE_ADMIN, ROLE_USER] }
-        - { path: ^/login_check, roles: PUBLIC_ACCESS }
+        #- { path: ^/login_check, roles: PUBLIC_ACCESS }
         #- { path: ^/profile, roles: ROLE_USER }
+        #- { path: ^/admin, roles: ROLE_ADMIN }
+        - { path: ^/api/login_check/, roles: PUBLIC_ACCESS }
+        - { path: ^/api/register/, roles: PUBLIC_ACCESS }
+        - { path: ^/api/books/, methods: [GET], roles: PUBLIC_ACCESS }
+        - { path: ^/api/categories/,methods: [GET],roles: PUBLIC_ACCESS }
+        - { path: ^/api/, roles:  IS_AUTHENTICATED_FULLY } 
 
 when@test:
     security:
