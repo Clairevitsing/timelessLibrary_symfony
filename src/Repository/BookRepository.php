@@ -46,13 +46,60 @@ class BookRepository extends ServiceEntityRepository
         ];
     }
 
-    public function findBookByTitle($title)
+    /**
+     * Search for books by title
+     * 
+     * @param string $title The search term
+     * @param int $limit Maximum number of results (optional)
+     * @param int $offset For pagination (optional)
+     * @return array The books matching the criteria
+     */
+    public function findBookByTitle(string $title, int $limit = 10, int $offset = 0): array
     {
-        return $this->createQueryBuilder('b')
-            ->where('b.title LIKE :title')
-            ->setParameter('title', '%' . $title . '%')
-            ->getQuery()
-            ->getResult();
+        $queryBuilder = $this->createQueryBuilder('b');
+
+        // Handle empty searches
+        if (empty(trim($title))) {
+            return [];
+        }
+
+        // Clean and prepare the search term
+        $searchTerm = trim($title);
+        $searchTerms = explode(' ', $searchTerm);
+
+        // If searching with multiple words, use an OR condition for each word
+        if (count($searchTerms) > 1) {
+            $orExpressions = $queryBuilder->expr()->orX();
+            foreach ($searchTerms as $key => $term) {
+                if (strlen($term) >= 2) { 
+                    $paramName = 'title' . $key;
+                    $orExpressions->add($queryBuilder->expr()->like('LOWER(b.title)', ':' . $paramName));
+                    $queryBuilder->setParameter($paramName, '%' . strtolower($term) . '%');
+                }
+            }
+
+            if ($orExpressions->count() > 0) {
+                $queryBuilder->where($orExpressions);
+            }
+        } else {
+            // Simple search with a single term
+            $queryBuilder
+                ->where($queryBuilder->expr()->like('LOWER(b.title)', ':title'))
+                ->setParameter('title', '%' . strtolower($searchTerm) . '%');
+        }
+
+        // Sort by relevance (books whose title starts with the search term first)
+        $queryBuilder
+            ->addOrderBy('CASE WHEN LOWER(b.title) LIKE :exact_start THEN 0 ELSE 1 END', 'ASC')
+            ->addOrderBy('b.title', 'ASC')
+            ->setParameter('exact_start', strtolower($searchTerm) . '%');
+
+        // Pagination
+        $queryBuilder
+            ->setMaxResults($limit)
+            ->setFirstResult($offset);
+
+        return $queryBuilder->getQuery()->getResult();
     }
 
     // public function findBooksByCategory(int $categoryId): array
